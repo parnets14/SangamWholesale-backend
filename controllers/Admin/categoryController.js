@@ -17,7 +17,7 @@ const getAllCategories = async (req, res) => {
 const createCategory = async (req, res) => {
   try {
     const { name, icon } = req.body;
-
+    console.log("req.body", req.body);
     if (!name || !icon) {
       return res
         .status(400)
