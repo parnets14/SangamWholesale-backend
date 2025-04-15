@@ -17,6 +17,8 @@ app.use(express.json());
 //Admin Routes
 app.use("/api/admin", require("./routes/Admin/adminRoutes"));
 
+app.use("/api/categories", require("./routes/Admin/categoryRoutes"));
+
 // User Routes
 app.use("/api/user", require("./routes/User/userRoute"));
 
