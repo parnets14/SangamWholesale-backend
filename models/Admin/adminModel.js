@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
- const bcrypt = require('bcryptjs');
+const bcrypt = require("bcryptjs");
 
 const adminSchema = mongoose.Schema(
   {
@@ -12,14 +12,13 @@ const adminSchema = mongoose.Schema(
       required: true,
       unique: true,
     },
-    phone: {
-      type: String,
-      required: true,
-      unique: true,
-    },
     password: {
       type: String,
       required: true,
+    },
+    role: {
+      type: String,
+      default: "admin",
     },
   },
   {
