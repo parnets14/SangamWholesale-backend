@@ -5,7 +5,7 @@ const { adminProtect } = require("../../middleware/Middleware");
 const upload = require("../../middleware/multer");
 
 // Public route - Anyone can view categories
-router.get("/", categoryController.getAllCategories);
+router.get("/all", categoryController.getAllCategories);
 
 // Admin-only routes
 router.post(

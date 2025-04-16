@@ -16,19 +16,23 @@ const sendOTP = async (req, res) => {
   try {
     const { phone } = req.body;
 
-    let user = await User.findOne({ phone }); // ✅ changed to let
-    let isNewUser = false;
+    let user = await User.findOne({ phone });
 
     if (!user) {
-      user = new User({ phone, isProfileComplete: false });
-      isNewUser = true;
+      // New phone number
+      user = new User({ phone });
+      user.isVerified = false; // Not verified yet
+    } else {
+      // Existing user - already verified before
+      user.isVerified = true;
     }
 
     const otp = generateOTP();
-    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
 
     user.otp = otp;
     user.otpExpiry = otpExpiry;
+
     await user.save();
 
     console.log(`OTP for ${phone}: ${otp}`);
@@ -36,7 +40,8 @@ const sendOTP = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "OTP sent successfully",
-      isNewUser,
+      isVerified: user.isVerified,
+      otp: otp,
     });
   } catch (error) {
     console.error("sendOTP error:", error);
@@ -77,6 +82,8 @@ const verifyOTP = async (req, res) => {
       user: {
         id: user._id,
         phone: user.phone,
+        name: user.name,
+        email: user.email,
         isVerified: user.isVerified,
         isProfileComplete: user.isProfileComplete,
       },

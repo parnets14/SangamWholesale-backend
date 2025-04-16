@@ -16,6 +16,14 @@ const userSchema = mongoose.Schema(
       required: true,
       unique: true,
     },
+    isProfileComplete: {
+      type: Boolean,
+      default: false,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
     otp: {
       type: String,
     },

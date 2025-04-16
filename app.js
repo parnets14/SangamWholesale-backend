@@ -16,13 +16,12 @@ app.use(express.json());
 
 //Admin Routes
 app.use("/api/admin", require("./routes/Admin/adminRoutes"));
-
 app.use("/api/categories", require("./routes/Admin/categoryRoutes"));
+app.use("/api/products", require("./routes/Admin/productRoutes"));
+app.use("/api/cities", require("./routes/Admin/cityRoutes"));
 
 // User Routes
 app.use("/api/user", require("./routes/User/userRoute"));
-
-app.use("/api/products", require("./routes/productRoutes"));
 
 // Basic route
 app.get("/", (req, res) => {
@@ -35,7 +34,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: err.message || "Something went wrong!" });
 });
 
-const PORT = process.env.PORT || 8081;
+const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
