@@ -13,9 +13,6 @@ const categorySchema = new mongoose.Schema(
       required: [true, "Icon is required"],
       trim: true,
     },
-    iconPublicId: {
-      type: String,
-    }
   },
   { timestamps: true }
 );

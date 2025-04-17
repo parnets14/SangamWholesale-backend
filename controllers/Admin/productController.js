@@ -1,5 +1,5 @@
 const Product = require("../../models/Admin/productModel");
-const Category = require("../../models/Admin/caterogty");
+const Category = require("../../models/Admin/categoryModel");
 const fs = require("fs");
 const path = require("path");
 const multer = require("multer");

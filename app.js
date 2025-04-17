@@ -21,8 +21,11 @@ app.use("/api/products", require("./routes/Admin/productRoutes"));
 app.use("/api/cities", require("./routes/Admin/cityRoutes"));
 
 // User Routes
-app.use("/api/user", require("./routes/User/userRoute"));
 
+app.use("/api/user", require("./routes/User/userRoute"));
+app.use("/api/addresses", require("./routes/User/addressRoutes"));
+app.use("/api/buyoncecart", require("./routes/User/buyonceRoute"));
+app.use("/api/subscriptions", require("./routes/User/subscriptionRoutes"));
 // Basic route
 app.get("/", (req, res) => {
   res.send("API is running...");

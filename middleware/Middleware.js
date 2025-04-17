@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User/userModel");
 const Admin = require("../models/Admin/adminModel");
+const Delivery = require("../models/Delivery/deliveryModel");
 
 //userMiddleware
 const userProtect = async (req, res, next) => {
@@ -27,9 +28,33 @@ const userProtect = async (req, res, next) => {
     res.status(401).json({ message: "Not authorized, no token" });
   }
 };
+//Deliveryboy Middleware
+const deliveryboyProtect = async (req, res, next) => {
+  let token;
+
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer")
+  ) {
+    try {
+      token = req.headers.authorization.split(" ")[1];
+      const decoded = jwt.verify(
+        token,
+        process.env.JWT_SECRET || "your_jwt_secret"
+      );
+
+      req.user = await Delivery.findById(decoded.id).select("-otp -otpExpiry");
+      next();
+    } catch (error) {
+      console.error("Auth error:", error);
+      res.status(401).json({ message: "Not authorized, token failed" });
+    }
+  } else {
+    res.status(401).json({ message: "Not authorized, no token" });
+  }
+};
 
 // adminMiddleware
-
 const adminProtect = async (req, res, next) => {
   let token;
 
@@ -62,4 +87,4 @@ const adminProtect = async (req, res, next) => {
   }
 };
 
-module.exports = { userProtect, adminProtect };
+module.exports = { userProtect, adminProtect, deliveryboyProtect };

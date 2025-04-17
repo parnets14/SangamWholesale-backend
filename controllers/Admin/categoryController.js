@@ -1,4 +1,4 @@
-const Category = require("../../models/Admin/caterogty");
+const Category = require("../../models/Admin/categoryModel");
 const fs = require("fs");
 const path = require("path");
 
@@ -82,7 +82,7 @@ const updateCategory = async (req, res) => {
 
     // Delete old image if new one is uploaded
     if (req.file) {
-      const oldImagePath = path.join(__dirname, `../../public/uploads/categories/${category.icon}`);
+      const oldImagePath = path.join(__dirname, `../../uploads/categories/${category.icon}`);
       if (fs.existsSync(oldImagePath)) {
         fs.unlinkSync(oldImagePath);
       }
@@ -124,7 +124,7 @@ const deleteCategory = async (req, res) => {
     }
 
     // Delete associated image
-    const imagePath = path.join(__dirname, `../../public/uploads/categories/${category.icon}`);
+    const imagePath = path.join(__dirname, `../../uploads/categories/${category.icon}`);
     if (fs.existsSync(imagePath)) {
       fs.unlinkSync(imagePath);
     }
