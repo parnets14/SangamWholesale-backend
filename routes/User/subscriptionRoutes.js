@@ -1,47 +1,3 @@
-// const express = require("express");
-// const router = express.Router();
-// const subscriptionController = require("../../controllers/User/subscriptionController");
-// const { userProtect } = require("../../middleware/Middleware");
-
-// // Create new subscription
-// router.post("/", userProtect, subscriptionController.createSubscription);
-
-// // Get all user subscriptions
-// router.get("/all", userProtect, subscriptionController.getUserSubscriptions);
-
-// // Get single subscription
-// router.get("/:id", userProtect, subscriptionController.getSubscription);
-
-// // Update subscription
-// router.put("/:id", userProtect, subscriptionController.updateSubscription);
-
-// // Pause subscription
-// router.put("/:id/pause", subscriptionController.pauseSubscription);
-
-// // Resume subscription
-// router.put(
-//   "/:id/resume",
-//   userProtect,
-//   subscriptionController.resumeSubscription
-// );
-
-// // Cancel subscription
-// router.put(
-//   "/:id/cancel",
-//   userProtect,
-//   subscriptionController.cancelSubscription
-// );
-
-// // Get upcoming deliveries
-// router.get(
-//   "/upcoming",
-//   userProtect,
-//   subscriptionController.getUpcomingDeliveries
-// );
-
-// module.exports = router;
-
-// routes/subscriptionRoutes.js
 const express = require("express");
 const router = express.Router();
 const {
@@ -51,13 +7,13 @@ const {
   pauseSubscription,
   resumeSubscription,
   cancelSubscription,
-  // cancelVacationMode,
-  // setVacationMode,
+  cancelVacationMode,
+  setVacationMode,
+  deleteSubscription,
 } = require("../../controllers/User/subscriptionController");
 const { userProtect } = require("../../middleware/Middleware");
 
 // All routes are protected
-// router.use(userProtect);
 
 // Create subscription
 router.post("/", userProtect, createSubscription);
@@ -77,10 +33,13 @@ router.post("/:id/resume", userProtect, resumeSubscription);
 // Cancel subscription
 router.post("/:id/cancel", userProtect, cancelSubscription);
 
+// delete subscription
+router.delete("/:id", userProtect, deleteSubscription);
+
 // Set vacation mode
-// router.post("/:id/vacation", userProtect, setVacationMode);
+router.post("/:id/vacation", userProtect, setVacationMode);
 
 // Cancel vacation mode
-// router.post("/:id/cancel-vacation", userProtect, cancelVacationMode);
+router.post("/:id/cancel-vacation", userProtect, cancelVacationMode);
 
 module.exports = router;

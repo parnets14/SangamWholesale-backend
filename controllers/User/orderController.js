@@ -6,10 +6,17 @@ const Address = require("../../models/User/addressModel");
 // Create one-time order
 const createOrder = async (req, res) => {
   try {
-    const { items, deliveryDate, deliverySlot, addressId, paymentMethod } = req.body;
+    const { items, deliveryDate, deliverySlot, addressId, paymentMethod } =
+      req.body;
 
     // Validate required fields
-    if (!items || !items.length || !deliveryDate || !deliverySlot || !addressId) {
+    if (
+      !items ||
+      !items.length ||
+      !deliveryDate ||
+      !deliverySlot ||
+      !addressId
+    ) {
       return res.status(400).json({
         success: false,
         message: "Missing required fields",
@@ -31,7 +38,7 @@ const createOrder = async (req, res) => {
 
     for (const item of items) {
       const product = await Product.findById(item.productId);
-      
+
       if (!product) {
         return res.status(404).json({
           success: false,
