@@ -9,7 +9,6 @@ const {
   cancelSubscription,
   cancelVacationMode,
   setVacationMode,
-  deleteSubscription,
 } = require("../../controllers/User/subscriptionController");
 const { userProtect } = require("../../middleware/Middleware");
 
@@ -32,9 +31,6 @@ router.post("/:id/resume", userProtect, resumeSubscription);
 
 // Cancel subscription
 router.post("/:id/cancel", userProtect, cancelSubscription);
-
-// delete subscription
-router.delete("/:id", userProtect, deleteSubscription);
 
 // Set vacation mode
 router.post("/:id/vacation", userProtect, setVacationMode);

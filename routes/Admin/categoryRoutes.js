@@ -2,23 +2,25 @@ const express = require("express");
 const router = express.Router();
 const categoryController = require("../../controllers/Admin/categoryController");
 const { adminProtect } = require("../../middleware/Middleware");
-const upload = require("../../middleware/multer");
-
+// const upload = require("../../middleware/multer");
+const createUploader = require("../../middleware/multer");
 // Public route - Anyone can view categories
-router.get("/all", categoryController.getAllCategories);
+router.get("/", categoryController.getAllCategories);
 
 // Admin-only routes
+// For categories
+const uploadCategory = createUploader("categories");
 router.post(
   "/",
   adminProtect,
-  upload.single("icon"),
+  uploadCategory.single("icon"),
   categoryController.createCategory
 );
 
 router.put(
   "/:id",
   adminProtect,
-  upload.single("icon"),
+  uploadCategory.single("icon"),
   categoryController.updateCategory
 );
 

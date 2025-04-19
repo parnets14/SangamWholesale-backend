@@ -7,7 +7,7 @@ const addressSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    fullName: {
+    Name: {
       type: String,
       required: [true, "Full name is required"],
       trim: true,
@@ -20,27 +20,6 @@ const addressSchema = new mongoose.Schema(
     streetAddress: {
       type: String,
       required: [true, "Street address is required"],
-      trim: true,
-    },
-    city: {
-      type: String,
-      required: [true, "City is required"],
-      trim: true,
-    },
-    state: {
-      type: String,
-      required: [true, "State is required"],
-      trim: true,
-    },
-    postalCode: {
-      type: String,
-      required: [true, "Postal code is required"],
-      trim: true,
-    },
-    country: {
-      type: String,
-      required: [true, "Country is required"],
-      default: "India",
       trim: true,
     },
     isDefault: {

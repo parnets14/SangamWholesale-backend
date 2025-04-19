@@ -1,5 +1,5 @@
 // controllers/orderController.js
-const Order = require("../../models/User/orderModel");
+const Order = require("../../models/User/buyonceModel");
 const Product = require("../../models/Admin/productModel");
 const Address = require("../../models/User/addressModel");
 

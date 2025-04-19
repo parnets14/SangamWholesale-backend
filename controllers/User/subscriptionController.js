@@ -1,7 +1,7 @@
 // controllers/subscriptionController.js
 const Subscription = require("../../models/User/subscriptionModel");
 const Product = require("../../models/Admin/productModel");
-const Order = require("../../models/User/orderModel");
+const Order = require("../../models/User/buyonceModel");
 const Address = require("../../models/User/addressModel");
 
 // Create new subscription
@@ -148,6 +148,118 @@ const getUserSubscriptions = async (req, res) => {
   }
 };
 
+// Update subscription details
+const updateSubscription = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      quantity,
+      frequency,
+      customDays,
+      intervalDays,
+      deliverySlot,
+      addressId,
+    } = req.body;
+
+    const subscription = await Subscription.findOne({
+      _id: id,
+      user: req.user._id,
+    });
+
+    if (!subscription) {
+      return res.status(404).json({
+        success: false,
+        message: "Subscription not found",
+      });
+    }
+
+    // Update fields if provided
+    if (quantity) subscription.quantity = quantity;
+
+    if (frequency) {
+      subscription.frequency = frequency;
+
+      // Reset frequency-specific fields
+      subscription.customDays = [];
+      subscription.intervalDays = null;
+
+      // Set new frequency-specific fields
+      if (frequency === "custom" && customDays && customDays.length > 0) {
+        subscription.customDays = customDays;
+      }
+
+      if (frequency === "interval" && intervalDays) {
+        subscription.intervalDays = intervalDays;
+      }
+
+      // Recalculate next delivery date
+      subscription.nextDeliveryDate = subscription.calculateNextDeliveryDate();
+    }
+
+    if (deliverySlot) {
+      subscription.deliverySlot = {
+        start: deliverySlot.split("-")[0],
+        end: deliverySlot.split("-")[1],
+      };
+    }
+
+    if (addressId) {
+      // Verify address exists
+      const address = await Address.findById(addressId);
+      if (!address) {
+        return res.status(404).json({
+          success: false,
+          message: "Address not found",
+        });
+      }
+      subscription.address = addressId;
+    }
+
+    await subscription.save();
+
+    // Update any pending orders for this subscription
+    if (quantity || deliverySlot || addressId) {
+      const pendingOrders = await Order.find({
+        subscription: id,
+        status: "pending",
+      });
+
+      for (const order of pendingOrders) {
+        if (quantity) {
+          order.items[0].quantity = quantity;
+          order.totalAmount = order.items[0].price * quantity;
+        }
+
+        if (deliverySlot) {
+          order.deliverySlot = {
+            start: deliverySlot.split("-")[0],
+            end: deliverySlot.split("-")[1],
+          };
+        }
+
+        if (addressId) {
+          order.deliveryAddress = addressId;
+        }
+
+        await order.save();
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Subscription updated successfully",
+      subscription,
+    });
+  } catch (error) {
+    console.error("Update subscription error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update subscription",
+      error: error.message,
+    });
+  }
+};
+
 // Pause subscription
 const pauseSubscription = async (req, res) => {
   try {
@@ -221,71 +333,6 @@ const resumeSubscription = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to resume subscription",
-      error: error.message,
-    });
-  }
-};
-
-// Delete subscription permanently
-const deleteSubscription = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // First check if subscription exists and belongs to the user
-    const subscription = await Subscription.findOne({
-      _id: id,
-      user: req.user._id,
-    });
-
-    if (!subscription) {
-      return res.status(404).json({
-        success: false,
-        message: "Subscription not found",
-      });
-    }
-
-    // Reasons for not allowing deletion in certain cases:
-    // 1. If there are completed orders, we want to maintain order history
-    // 2. If subscription is active, we should cancel it first to prevent accidental deletion
-    if (subscription.status === 'active') {
-      return res.status(400).json({
-        success: false,
-        message: "Please cancel the subscription before deleting",
-      });
-    }
-
-    // Check if there are any completed orders for this subscription
-    const hasCompletedOrders = await Order.exists({
-      subscription: id,
-      status: 'completed'
-    });
-
-    if (hasCompletedOrders) {
-      return res.status(400).json({
-        success: false,
-        message: "Cannot delete subscription with completed orders. Please contact support if needed.",
-      });
-    }
-
-    // Soft delete implementation (recommended approach):
-    // Instead of actually deleting, we'll mark as deleted and keep the record
-    // This maintains data integrity and allows for recovery if needed
-    subscription.isDeleted = true;
-    subscription.deletedAt = new Date();
-    await subscription.save();
-
-    // Alternative: Hard delete (if you really want to permanently remove)
-    // await Subscription.deleteOne({ _id: id });
-
-    res.status(200).json({
-      success: true,
-      message: "Subscription deleted successfully",
-    });
-  } catch (error) {
-    console.error("Delete subscription error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete subscription",
       error: error.message,
     });
   }
@@ -455,118 +502,6 @@ const cancelVacationMode = async (req, res) => {
   }
 };
 
-// Update subscription details
-const updateSubscription = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const {
-      quantity,
-      frequency,
-      customDays,
-      intervalDays,
-      deliverySlot,
-      addressId,
-    } = req.body;
-
-    const subscription = await Subscription.findOne({
-      _id: id,
-      user: req.user._id,
-    });
-
-    if (!subscription) {
-      return res.status(404).json({
-        success: false,
-        message: "Subscription not found",
-      });
-    }
-
-    // Update fields if provided
-    if (quantity) subscription.quantity = quantity;
-
-    if (frequency) {
-      subscription.frequency = frequency;
-
-      // Reset frequency-specific fields
-      subscription.customDays = [];
-      subscription.intervalDays = null;
-
-      // Set new frequency-specific fields
-      if (frequency === "custom" && customDays && customDays.length > 0) {
-        subscription.customDays = customDays;
-      }
-
-      if (frequency === "interval" && intervalDays) {
-        subscription.intervalDays = intervalDays;
-      }
-
-      // Recalculate next delivery date
-      subscription.nextDeliveryDate = subscription.calculateNextDeliveryDate();
-    }
-
-    if (deliverySlot) {
-      subscription.deliverySlot = {
-        start: deliverySlot.split("-")[0],
-        end: deliverySlot.split("-")[1],
-      };
-    }
-
-    if (addressId) {
-      // Verify address exists
-      const address = await Address.findById(addressId);
-      if (!address) {
-        return res.status(404).json({
-          success: false,
-          message: "Address not found",
-        });
-      }
-      subscription.address = addressId;
-    }
-
-    await subscription.save();
-
-    // Update any pending orders for this subscription
-    if (quantity || deliverySlot || addressId) {
-      const pendingOrders = await Order.find({
-        subscription: id,
-        status: "pending",
-      });
-
-      for (const order of pendingOrders) {
-        if (quantity) {
-          order.items[0].quantity = quantity;
-          order.totalAmount = order.items[0].price * quantity;
-        }
-
-        if (deliverySlot) {
-          order.deliverySlot = {
-            start: deliverySlot.split("-")[0],
-            end: deliverySlot.split("-")[1],
-          };
-        }
-
-        if (addressId) {
-          order.deliveryAddress = addressId;
-        }
-
-        await order.save();
-      }
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Subscription updated successfully",
-      subscription,
-    });
-  } catch (error) {
-    console.error("Update subscription error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update subscription",
-      error: error.message,
-    });
-  }
-};
-
 module.exports = {
   createSubscription,
   getUserSubscriptions,
@@ -576,5 +511,4 @@ module.exports = {
   setVacationMode,
   cancelVacationMode,
   updateSubscription,
-  deleteSubscription
 };

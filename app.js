@@ -16,6 +16,7 @@ app.use(express.json());
 
 //Admin Routes
 app.use("/api/admin", require("./routes/Admin/adminRoutes"));
+app.use("/api/banner", require("./routes/Admin/bannerRoutes"));
 app.use("/api/categories", require("./routes/Admin/categoryRoutes"));
 app.use("/api/products", require("./routes/Admin/productRoutes"));
 app.use("/api/cities", require("./routes/Admin/cityRoutes"));
@@ -26,8 +27,8 @@ app.use("/api/faqs", require("./routes/Admin/faqRoutes"));
 app.use("/api/user", require("./routes/User/userRoute"));
 app.use("/api/addresses", require("./routes/User/addressRoutes"));
 app.use("/api/subscription", require("./routes/User/subscriptionRoutes"));
-app.use("/api/orders", require("./routes/User/OrderRoute"));
-app.use("/api/deliverypref", require("./routes/Admin/deliveryprefRoutes"));
+app.use("/api/buyonce", require("./routes/User/buyonceRoute"));
+app.use("/api/deliverypref", require("./routes/User/deliveryprefRoutes"));
 // Basic route
 app.get("/", (req, res) => {
   res.send("API is running...");

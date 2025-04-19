@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const subscriptionSchema = new mongoose.Schema(
+const buyonceSchema = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
@@ -20,20 +20,12 @@ const subscriptionSchema = new mongoose.Schema(
     },
     frequency: {
       type: String,
-      enum: ["daily", "custom", "interval"],
+      default: "one Time",
       required: true,
-    },
-    customDays: {
-      type: [Number], // 0-6 (Sunday-Saturday)
-      default: [],
-    },
-    intervalDays: {
-      type: Number,
-      default: null,
     },
     orderType: {
       type: String,
-      default: "subscription",
+      default: "buyonce",
       required: true,
     },
     deliveryTime: {
@@ -55,8 +47,8 @@ const subscriptionSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["onhold", "delivered", "upcoming", "vacation", "cancelled"],
-      default: "upcoming",
+      enum: ["onhold", "delivered", "upcomming", "vaction"],
+      default: "upcomming",
     },
     paymentMethod: {
       type: String,
@@ -74,5 +66,5 @@ const subscriptionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const Subscription = mongoose.model("Subscription", subscriptionSchema);
-module.exports = Subscription;
+const Buyonce = mongoose.model("Buyonce", buyonceSchema);
+module.exports = Buyonce;

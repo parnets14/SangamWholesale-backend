@@ -7,7 +7,7 @@ const { userProtect } = require("../../middleware/Middleware");
 router.post("/", userProtect, addressController.createAddress);
 
 // Get all addresses for user
-router.get("/all", userProtect, addressController.getUserAddresses);
+router.get("/", userProtect, addressController.getUserAddresses);
 
 // Get single address
 router.get("/:id", userProtect, addressController.getAddress);

@@ -1,10 +1,11 @@
-const DeliveryPreference = require("../../models/Admin/deliveryprefModel");
+const DeliveryPreference = require("../../models/User/deliveryprefModel");
 
 // Get all preferences
 exports.getAllPreferences = async (req, res) => {
   try {
     const prefs = await DeliveryPreference.find();
-    res.status(200).json(prefs);
+    const responce = res.status(200).json(prefs);
+    console.log("responce", responce);
   } catch (err) {
     res
       .status(500)
