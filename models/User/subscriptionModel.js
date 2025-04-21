@@ -66,10 +66,7 @@ const subscriptionSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    totalAmount: {
-      type: Number,
-      required: true,
-    },
+
   },
   { timestamps: true }
 );
