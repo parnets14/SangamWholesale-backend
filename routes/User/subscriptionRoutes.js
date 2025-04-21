@@ -1,41 +1,40 @@
 const express = require("express");
 const router = express.Router();
-const {
-  createSubscription,
-  getUserSubscriptions,
-  updateSubscription,
-  pauseSubscription,
-  resumeSubscription,
-  cancelSubscription,
-  cancelVacationMode,
-  setVacationMode,
-} = require("../../controllers/User/subscriptionController");
-const { userProtect } = require("../../middleware/Middleware");
+const subscriptionController = require("../../controllers/User/subscriptionController");
+const { userProtect, adminProtect } = require("../../middleware/Middleware");
 
-// All routes are protected
+// User routes
+router.post("/", userProtect, subscriptionController.createSubscription);
+router.get(
+  "/user/:userId",
+  userProtect,
+  subscriptionController.getUserSubscriptions
+);
+router.get(
+  "/active/:userId",
+  userProtect,
+  subscriptionController.getActiveSubscriptions
+);
 
-// Create subscription
-router.post("/", userProtect, createSubscription);
+// Single subscription operations
+router
+  .route("/:subscriptionId")
+  .get(userProtect, subscriptionController.getSubscriptionById)
+  .put(userProtect, subscriptionController.updateSubscription)
+  .delete(userProtect, subscriptionController.deleteSubscription);
 
-// Get user's subscriptions
-router.get("/", userProtect, getUserSubscriptions);
+// Subscription item status update
+router.patch(
+  "/:subscriptionId/items/:itemId/status",
+  userProtect,
+  subscriptionController.updateSubscriptionItemStatus
+);
 
-// Update subscription
-router.put("/:id", userProtect, updateSubscription);
-
-// Pause subscription
-router.post("/:id/pause", userProtect, pauseSubscription);
-
-// Resume subscription
-router.post("/:id/resume", userProtect, resumeSubscription);
-
-// Cancel subscription
-router.post("/:id/cancel", userProtect, cancelSubscription);
-
-// Set vacation mode
-router.post("/:id/vacation", userProtect, setVacationMode);
-
-// Cancel vacation mode
-router.post("/:id/cancel-vacation", userProtect, cancelVacationMode);
+// Admin routes
+router.get(
+  "/admin/all",
+  adminProtect,
+  subscriptionController.getAllSubscriptions
+);
 
 module.exports = router;

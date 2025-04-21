@@ -1,189 +1,253 @@
-// controllers/orderController.js
-const Order = require("../../models/User/buyonceModel");
+const Buyonce = require("../../models/User/buyonceModel");
 const Product = require("../../models/Admin/productModel");
+const User = require("../../models/User/userModel");
 const Address = require("../../models/User/addressModel");
 
-// Create one-time order
-const createOrder = async (req, res) => {
+// Create a new BuyOnce order
+const createBuyonceOrder = async (req, res) => {
   try {
-    const { items, deliveryDate, deliverySlot, addressId, paymentMethod } =
-      req.body;
+    const { user, order } = req.body;
 
-    // Validate required fields
-    if (
-      !items ||
-      !items.length ||
-      !deliveryDate ||
-      !deliverySlot ||
-      !addressId
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing required fields",
-      });
+    // Validate user exists
+    const userExists = await User.findById(user);
+    if (!userExists) {
+      return res.status(404).json({ error: "User not found" });
     }
 
-    // Validate address exists
-    const address = await Address.findById(addressId);
-    if (!address) {
-      return res.status(404).json({
-        success: false,
-        message: "Address not found",
-      });
-    }
-
-    // Process items and calculate total
-    let orderItems = [];
-    let totalAmount = 0;
-
-    for (const item of items) {
+    // Validate each product in the order
+    for (const item of order) {
       const product = await Product.findById(item.productId);
-
       if (!product) {
-        return res.status(404).json({
-          success: false,
-          message: `Product not found: ${item.productId}`,
-        });
+        return res
+          .status(404)
+          .json({ error: `Product ${item.productId} not found` });
       }
 
-      orderItems.push({
-        product: item.productId,
-        quantity: item.quantity || 1,
-        price: product.price,
-        name: product.name,
-        size: item.size || product.sizes[0],
-        unit: item.unit || product.units[0],
-      });
+      // Validate address exists
+      const address = await Address.findById(item.address);
+      if (!address) {
+        return res
+          .status(404)
+          .json({ error: `Address ${item.address} not found` });
+      }
 
-      totalAmount += product.price * (item.quantity || 1);
+      // Validate delivery date
+      if (!item.deliveryDate || isNaN(new Date(item.deliveryDate))) {
+        return res.status(400).json({ error: "Invalid delivery date" });
+      }
     }
 
-    // Create order
-    const order = await Order.create({
-      user: req.user._id,
-      items: orderItems,
-      totalAmount,
-      orderType: "one-time",
-      deliveryAddress: addressId,
-      deliveryDate: new Date(deliveryDate),
-      deliverySlot: {
-        start: deliverySlot.split("-")[0],
-        end: deliverySlot.split("-")[1],
-      },
-      paymentMethod: paymentMethod || "cod",
-      paymentStatus: paymentMethod === "cod" ? "pending" : "pending", // If payment gateway, update after payment
-    });
+    const buyonceOrder = new Buyonce({ user, order });
+    await buyonceOrder.save();
 
-    res.status(201).json({
-      success: true,
-      message: "Order placed successfully",
-      order,
-    });
+    res.status(201).json(buyonceOrder);
   } catch (error) {
-    console.error("Create order error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to create order",
-      error: error.message,
-    });
+    res.status(400).json({ error: error.message });
   }
 };
 
-// Get user's orders
-const getUserOrders = async (req, res) => {
+// In getUpcomingBuyonceOrders
+const getUpcomingBuyonceOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.user._id })
-      .populate("items.product", "name image")
-      .populate("deliveryAddress")
-      .sort({ createdAt: -1 });
+    const userId = req.params.userId;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    res.status(200).json({
-      success: true,
-      orders,
-    });
+    const orders = await Buyonce.find({
+      user: userId,
+      "order.deliveryDate": { $gte: today }, // Fixed field name
+    })
+      .populate("order.productId", "name price image")
+      .populate("order.address");
+
+    if (!orders || orders.length === 0) {
+      return res.status(404).json({ message: "No upcoming orders found" });
+    }
+
+    const result = orders
+      .map((order) => ({
+        ...order.toObject(),
+        order: order.order.filter(
+          (item) => new Date(item.deliveryDate) >= today
+        ), // Fixed field name
+      }))
+      .filter((order) => order.order.length > 0);
+
+    res.status(200).json(result);
   } catch (error) {
-    console.error("Get orders error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch orders",
-      error: error.message,
-    });
+    res.status(500).json({ error: error.message });
   }
 };
 
-// Get order details
-const getOrderDetails = async (req, res) => {
+// Get all BuyOnce orders (admin only)
+const getAllBuyonceOrders = async (req, res) => {
   try {
-    const { id } = req.params;
+    const orders = await Buyonce.find()
+      .populate("user", "name email")
+      .populate("order.productId", "name price")
+      .populate("order.address");
 
-    const order = await Order.findOne({ _id: id, user: req.user._id })
-      .populate("items.product", "name image")
-      .populate("deliveryAddress")
-      .populate("subscription");
+    res.status(200).json(orders);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get BuyOnce orders for a specific user
+const getUserBuyonceOrders = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+
+    const orders = await Buyonce.find({ user: userId })
+      .populate("order.productId", "name price image")
+      .populate("order.address");
+
+    if (!orders || orders.length === 0) {
+      return res.status(404).json({ message: "No orders found for this user" });
+    }
+
+    res.status(200).json(orders);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get a single BuyOnce order by ID
+const getBuyonceOrderById = async (req, res) => {
+  try {
+    const orderId = req.params.orderId;
+
+    const order = await Buyonce.findById(orderId)
+      .populate("user", "name email")
+      .populate("order.productId", "name price description")
+      .populate("order.address");
 
     if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
+      return res.status(404).json({ error: "Order not found" });
     }
 
-    res.status(200).json({
-      success: true,
-      order,
-    });
+    res.status(200).json(order);
   } catch (error) {
-    console.error("Get order details error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch order details",
-      error: error.message,
-    });
+    res.status(500).json({ error: error.message });
   }
 };
 
-// Cancel order
-const cancelOrder = async (req, res) => {
+// Update a BuyOnce order
+const updateBuyonceOrder = async (req, res) => {
   try {
-    const { id } = req.params;
+    const orderId = req.params.orderId;
+    const updates = req.body;
 
-    const order = await Order.findOne({ _id: id, user: req.user._id });
+    // Validate products if they're being updated
+    if (updates.order) {
+      for (const item of updates.order) {
+        if (item.productId) {
+          const product = await Product.findById(item.productId);
+          if (!product) {
+            return res
+              .status(404)
+              .json({ error: `Product ${item.productId} not found` });
+          }
+        }
 
+        if (item.address) {
+          const address = await Address.findById(item.address);
+          if (!address) {
+            return res
+              .status(404)
+              .json({ error: `Address ${item.address} not found` });
+          }
+        }
+
+        if (
+          item.startDate &&
+          item.endDate &&
+          new Date(item.startDate) > new Date(item.endDate)
+        ) {
+          return res
+            .status(400)
+            .json({ error: "Start date cannot be after end date" });
+        }
+      }
+    }
+
+    const updatedOrder = await Buyonce.findByIdAndUpdate(orderId, updates, {
+      new: true,
+      runValidators: true,
+    })
+      .populate("user", "name email")
+      .populate("order.productId", "name price")
+      .populate("order.address");
+
+    if (!updatedOrder) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    res.status(200).json(updatedOrder);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// Update status of a specific order item
+const updateOrderItemStatus = async (req, res) => {
+  try {
+    const { orderId, itemId } = req.params;
+    const { status } = req.body;
+
+    if (
+      !["onhold", "delivered", "upcoming", "vacation", "cancelled"].includes(
+        status
+      )
+    ) {
+      return res.status(400).json({ error: "Invalid status" });
+    }
+
+    const order = await Buyonce.findById(orderId);
     if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
+      return res.status(404).json({ error: "Order not found" });
     }
 
-    // Check if order can be cancelled
-    if (["delivered", "out-for-delivery", "cancelled"].includes(order.status)) {
-      return res.status(400).json({
-        success: false,
-        message: `Order cannot be cancelled in ${order.status} status`,
-      });
+    const itemIndex = order.order.findIndex(
+      (item) => item._id.toString() === itemId
+    );
+    if (itemIndex === -1) {
+      return res.status(404).json({ error: "Order item not found" });
     }
 
-    order.status = "cancelled";
+    order.order[itemIndex].status = status;
     await order.save();
 
-    res.status(200).json({
-      success: true,
-      message: "Order cancelled successfully",
-    });
+    res.status(200).json(order);
   } catch (error) {
-    console.error("Cancel order error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to cancel order",
-      error: error.message,
-    });
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// Delete a BuyOnce order
+const deleteBuyonceOrder = async (req, res) => {
+  try {
+    const orderId = req.params.orderId;
+
+    const deletedOrder = await Buyonce.findByIdAndDelete(orderId);
+
+    if (!deletedOrder) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    res.status(200).json({ message: "Order deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };
 
 module.exports = {
-  createOrder,
-  getUserOrders,
-  getOrderDetails,
-  cancelOrder,
+  createBuyonceOrder,
+  getAllBuyonceOrders,
+  getUserBuyonceOrders,
+  getBuyonceOrderById,
+  updateBuyonceOrder,
+  updateOrderItemStatus,
+  deleteBuyonceOrder,
+  getUpcomingBuyonceOrders,
 };

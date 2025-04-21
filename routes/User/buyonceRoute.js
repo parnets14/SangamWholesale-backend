@@ -1,22 +1,31 @@
-
 const express = require("express");
 const router = express.Router();
-const orderController = require("../../controllers/User/buyonceController");
-const { userProtect } = require("../../middleware/Middleware");
+const buyonceController = require("../../controllers/User/buyonceController");
+const { userProtect, adminProtect } = require("../../middleware/Middleware");
 
-// All routes are protected
-router.use(userProtect);
+// User routes
+router
+  .route("/")
+  .post(userProtect, buyonceController.createBuyonceOrder)
+  .get(userProtect, buyonceController.getUserBuyonceOrders);
 
-// Create buyonce order
-router.post("/", orderController.createOrder);
+router
+  .route("/upcoming")
+  .get(userProtect, buyonceController.getUpcomingBuyonceOrders);
 
-// Get user's orders
-router.get("/", orderController.getUserOrders);
+router
+  .route("/:orderId")
+  .get(userProtect, buyonceController.getBuyonceOrderById)
+  .put(userProtect, buyonceController.updateBuyonceOrder)
+  .delete(userProtect, buyonceController.deleteBuyonceOrder);
 
-// Get order details
-router.get("/:id", orderController.getOrderDetails);
+router
+  .route("/:orderId/items/:itemId/status")
+  .patch(userProtect, buyonceController.updateOrderItemStatus);
 
-// Cancel order
-router.post("/:id/cancel", orderController.cancelOrder);
+// Admin routes
+router
+  .route("/admin/all")
+  .get(adminProtect, buyonceController.getAllBuyonceOrders);
 
 module.exports = router;

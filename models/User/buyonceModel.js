@@ -7,57 +7,44 @@ const buyonceSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    product: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Product",
-      required: true,
-    },
-    quantity: {
-      type: Number,
-      required: true,
-      min: 1,
-      default: 1,
-    },
-    frequency: {
-      type: String,
-      default: "one Time",
-      required: true,
-    },
-    orderType: {
-      type: String,
-      default: "buyonce",
-      required: true,
-    },
-    deliveryTime: {
-      type: String,
-      default: "04:00-07:00 AM",
-    },
-    startDate: {
-      type: Date,
-      required: true,
-    },
-    endDate: {
-      type: Date,
-      required: true,
-    },
-    address: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Address",
-      required: true,
-    },
-    status: {
-      type: String,
-      enum: ["onhold", "delivered", "upcomming", "vaction"],
-      default: "upcomming",
-    },
-    paymentMethod: {
-      type: String,
-      default: "wallet",
-    },
-    discount: {
-      type: Number,
-      default: 0,
-    },
+    order: [
+      {
+        productId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Product",
+          required: true,
+        },
+        quantity: {
+          type: Number,
+          required: true,
+          min: 1,
+          default: 1,
+        },
+        orderType: {
+          type: String,
+          default: "buyonce",
+          required: true,
+        },
+        deliveryTime: {
+          type: String,
+          default: "04:00-07:00 AM",
+        },
+       deliveryDate: {  // Remove the duplicate "Date" in the name
+  type: Date,
+  required: true
+},
+        address: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Address",
+          required: true,
+        },
+        status: {
+          type: String,
+          enum: ["onhold", "delivered", "upcoming", "vacation", "cancelled"],
+          default: "upcoming",
+        },
+      },
+    ],
   },
   { timestamps: true }
 );

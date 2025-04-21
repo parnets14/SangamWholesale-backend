@@ -21,6 +21,7 @@ app.use("/api/categories", require("./routes/Admin/categoryRoutes"));
 app.use("/api/products", require("./routes/Admin/productRoutes"));
 app.use("/api/cities", require("./routes/Admin/cityRoutes"));
 app.use("/api/faqs", require("./routes/Admin/faqRoutes"));
+app.use("/api/discover", require("./routes/Admin/discoverRoutes"));
 
 // User Routes
 
@@ -28,6 +29,9 @@ app.use("/api/user", require("./routes/User/userRoute"));
 app.use("/api/addresses", require("./routes/User/addressRoutes"));
 app.use("/api/subscription", require("./routes/User/subscriptionRoutes"));
 app.use("/api/buyonce", require("./routes/User/buyonceRoute"));
+app.use("/api/cart", require("./routes/User/cartRoutes"));
+app.use("/api/wallet", require("./routes/User/walletRoutes"));
+app.use("/api/orders", require("./routes/User/orderRoutes"));
 app.use("/api/deliverypref", require("./routes/User/deliveryprefRoutes"));
 // Basic route
 app.get("/", (req, res) => {

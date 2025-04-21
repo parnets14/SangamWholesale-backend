@@ -1,514 +1,280 @@
-// controllers/subscriptionController.js
 const Subscription = require("../../models/User/subscriptionModel");
 const Product = require("../../models/Admin/productModel");
-const Order = require("../../models/User/buyonceModel");
+const User = require("../../models/User/userModel");
 const Address = require("../../models/User/addressModel");
 
-// Create new subscription
+// Create a new subscription
 const createSubscription = async (req, res) => {
   try {
-    const {
-      productId,
-      quantity,
-      frequency,
-      customDays,
-      intervalDays,
-      startDate,
-      deliverySlot,
-      addressId,
-    } = req.body;
+    const { user, Subscriptions } = req.body;
 
-    // Validate required fields
-    if (!productId || !frequency || !startDate || !deliverySlot || !addressId) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing required fields",
-      });
+    // Validate user exists
+    const userExists = await User.findById(user);
+    if (!userExists) {
+      return res.status(404).json({ error: "User not found" });
     }
 
-    // Validate product exists
-    const product = await Product.findById(productId);
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found",
-      });
+    // Validate each subscription item
+    for (const sub of Subscriptions) {
+      // Validate product exists
+      const product = await Product.findById(sub.product);
+      if (!product) {
+        return res
+          .status(404)
+          .json({ error: `Product ${sub.product} not found` });
+      }
+
+      // Validate address exists
+      const address = await Address.findById(sub.address);
+      if (!address) {
+        return res
+          .status(404)
+          .json({ error: `Address ${sub.address} not found` });
+      }
+
+      // Validate dates
+      if (new Date(sub.startDate) >= new Date(sub.endDate)) {
+        return res
+          .status(400)
+          .json({ error: "Start date must be before end date" });
+      }
+
+      // Validate frequency-specific fields
+      if (
+        sub.frequency === "custom" &&
+        (!sub.customDays || sub.customDays.length === 0)
+      ) {
+        return res
+          .status(400)
+          .json({ error: "Custom days required for custom frequency" });
+      }
+
+      if (sub.frequency === "interval" && !sub.intervalDays) {
+        return res
+          .status(400)
+          .json({ error: "Interval days required for interval frequency" });
+      }
     }
 
-    // Validate address exists
-    const address = await Address.findById(addressId);
-    if (!address) {
-      return res.status(404).json({
-        success: false,
-        message: "Address not found",
-      });
-    }
+    const subscription = new Subscription({ user, Subscriptions });
+    await subscription.save();
 
-    // Validate frequency specific fields
-    if (frequency === "custom" && (!customDays || customDays.length === 0)) {
-      return res.status(400).json({
-        success: false,
-        message: "Custom days are required for custom frequency",
-      });
-    }
-
-    if (frequency === "interval" && !intervalDays) {
-      return res.status(400).json({
-        success: false,
-        message: "Interval days are required for interval frequency",
-      });
-    }
-
-    // Parse start date
-    const parsedStartDate = new Date(startDate);
-
-    // Create subscription
-    const subscription = await Subscription.create({
-      user: req.user._id,
-      product: productId,
-      quantity: quantity || 1,
-      frequency,
-      customDays: frequency === "custom" ? customDays : [],
-      intervalDays: frequency === "interval" ? intervalDays : null,
-      startDate: parsedStartDate,
-      nextDeliveryDate: parsedStartDate,
-      deliverySlot: {
-        start: deliverySlot.split("-")[0],
-        end: deliverySlot.split("-")[1],
-      },
-      status: "active",
-      address: addressId,
-      // productSnapshot: {
-      //   name: product.name,
-      //   price: product.price,
-      //   size: req.body.size || product.sizes[0],
-      //   unit: req.body.unit || product.units[0],
-      //   image: product.image,
-      // },
-    });
-
-    // Create first order for this subscription
-    const order = await Order.create({
-      user: req.user._id,
-      items: [
-        {
-          product: productId,
-          quantity: quantity || 1,
-          price: product.price,
-          name: product.name,
-          size: req.body.size || product.sizes[0],
-          unit: req.body.unit || product.units[0],
-        },
-      ],
-      totalAmount: product.price * (quantity || 1),
-      orderType: "subscription",
-      subscription: subscription._id,
-      deliveryAddress: addressId,
-      deliveryDate: parsedStartDate,
-      deliverySlot: {
-        start: deliverySlot.split("-")[0],
-        end: deliverySlot.split("-")[1],
-      },
-    });
-
-    res.status(201).json({
-      success: true,
-      message: "Subscription created successfully",
-      subscription,
-      firstOrder: order,
-    });
+    res.status(201).json(subscription);
   } catch (error) {
-    console.error("Create subscription error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to create subscription",
-      error: error.message,
-    });
+    res.status(400).json({ error: error.message });
   }
 };
 
-// Get user's subscriptions
+// Get all subscriptions (admin only)
+const getAllSubscriptions = async (req, res) => {
+  try {
+    const subscriptions = await Subscription.find()
+      .populate("user", "name email")
+      .populate("Subscriptions.product", "name price")
+      .populate("Subscriptions.address");
+
+    res.status(200).json(subscriptions);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get subscriptions for a specific user
 const getUserSubscriptions = async (req, res) => {
   try {
-    const subscriptions = await Subscription.find({ user: req.user._id })
-      .populate("product", "name price image")
-      .populate("address");
+    const userId = req.params.userId;
 
-    res.status(200).json({
-      success: true,
-      subscriptions,
-    });
+    const subscriptions = await Subscription.find({ user: userId })
+      .populate("Subscriptions.product", "name price image")
+      .populate("Subscriptions.address");
+
+    if (!subscriptions || subscriptions.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No subscriptions found for this user" });
+    }
+
+    res.status(200).json(subscriptions);
   } catch (error) {
-    console.error("Get subscriptions error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch subscriptions",
-      error: error.message,
-    });
+    res.status(500).json({ error: error.message });
   }
 };
 
-// Update subscription details
+// Get a single subscription by ID
+const getSubscriptionById = async (req, res) => {
+  try {
+    const subscriptionId = req.params.subscriptionId;
+
+    const subscription = await Subscription.findById(subscriptionId)
+      .populate("user", "name email")
+      .populate("Subscriptions.product", "name price description")
+      .populate("Subscriptions.address");
+
+    if (!subscription) {
+      return res.status(404).json({ error: "Subscription not found" });
+    }
+
+    res.status(200).json(subscription);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Update a subscription
 const updateSubscription = async (req, res) => {
   try {
-    const { id } = req.params;
-    const {
-      quantity,
-      frequency,
-      customDays,
-      intervalDays,
-      deliverySlot,
-      addressId,
-    } = req.body;
+    const subscriptionId = req.params.subscriptionId;
+    const updates = req.body;
 
-    const subscription = await Subscription.findOne({
-      _id: id,
-      user: req.user._id,
-    });
-
-    if (!subscription) {
-      return res.status(404).json({
-        success: false,
-        message: "Subscription not found",
-      });
+    // Validate if subscription exists
+    const existingSubscription = await Subscription.findById(subscriptionId);
+    if (!existingSubscription) {
+      return res.status(404).json({ error: "Subscription not found" });
     }
 
-    // Update fields if provided
-    if (quantity) subscription.quantity = quantity;
-
-    if (frequency) {
-      subscription.frequency = frequency;
-
-      // Reset frequency-specific fields
-      subscription.customDays = [];
-      subscription.intervalDays = null;
-
-      // Set new frequency-specific fields
-      if (frequency === "custom" && customDays && customDays.length > 0) {
-        subscription.customDays = customDays;
-      }
-
-      if (frequency === "interval" && intervalDays) {
-        subscription.intervalDays = intervalDays;
-      }
-
-      // Recalculate next delivery date
-      subscription.nextDeliveryDate = subscription.calculateNextDeliveryDate();
-    }
-
-    if (deliverySlot) {
-      subscription.deliverySlot = {
-        start: deliverySlot.split("-")[0],
-        end: deliverySlot.split("-")[1],
-      };
-    }
-
-    if (addressId) {
-      // Verify address exists
-      const address = await Address.findById(addressId);
-      if (!address) {
-        return res.status(404).json({
-          success: false,
-          message: "Address not found",
-        });
-      }
-      subscription.address = addressId;
-    }
-
-    await subscription.save();
-
-    // Update any pending orders for this subscription
-    if (quantity || deliverySlot || addressId) {
-      const pendingOrders = await Order.find({
-        subscription: id,
-        status: "pending",
-      });
-
-      for (const order of pendingOrders) {
-        if (quantity) {
-          order.items[0].quantity = quantity;
-          order.totalAmount = order.items[0].price * quantity;
+    // Validate updates if provided
+    if (updates.Subscriptions) {
+      for (const sub of updates.Subscriptions) {
+        if (sub.product) {
+          const product = await Product.findById(sub.product);
+          if (!product) {
+            return res
+              .status(404)
+              .json({ error: `Product ${sub.product} not found` });
+          }
         }
 
-        if (deliverySlot) {
-          order.deliverySlot = {
-            start: deliverySlot.split("-")[0],
-            end: deliverySlot.split("-")[1],
-          };
+        if (sub.address) {
+          const address = await Address.findById(sub.address);
+          if (!address) {
+            return res
+              .status(404)
+              .json({ error: `Address ${sub.address} not found` });
+          }
         }
 
-        if (addressId) {
-          order.deliveryAddress = addressId;
+        if (
+          sub.startDate &&
+          sub.endDate &&
+          new Date(sub.startDate) >= new Date(sub.endDate)
+        ) {
+          return res
+            .status(400)
+            .json({ error: "Start date must be before end date" });
         }
-
-        await order.save();
       }
     }
 
-    res.status(200).json({
-      success: true,
-      message: "Subscription updated successfully",
-      subscription,
-    });
+    const updatedSubscription = await Subscription.findByIdAndUpdate(
+      subscriptionId,
+      updates,
+      { new: true, runValidators: true }
+    )
+      .populate("user", "name email")
+      .populate("Subscriptions.product", "name price")
+      .populate("Subscriptions.address");
+
+    res.status(200).json(updatedSubscription);
   } catch (error) {
-    console.error("Update subscription error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update subscription",
-      error: error.message,
-    });
+    res.status(400).json({ error: error.message });
   }
 };
 
-// Pause subscription
-const pauseSubscription = async (req, res) => {
+// Update status of a specific subscription item
+const updateSubscriptionItemStatus = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { subscriptionId, itemId } = req.params;
+    const { status } = req.body;
 
-    const subscription = await Subscription.findOne({
-      _id: id,
-      user: req.user._id,
-    });
-
-    if (!subscription) {
-      return res.status(404).json({
-        success: false,
-        message: "Subscription not found",
-      });
+    if (
+      !["onhold", "delivered", "upcoming", "vacation", "cancelled"].includes(
+        status
+      )
+    ) {
+      return res.status(400).json({ error: "Invalid status" });
     }
 
-    subscription.status = "paused";
+    const subscription = await Subscription.findById(subscriptionId);
+    if (!subscription) {
+      return res.status(404).json({ error: "Subscription not found" });
+    }
+
+    const itemIndex = subscription.Subscriptions.findIndex(
+      (item) => item._id.toString() === itemId
+    );
+    if (itemIndex === -1) {
+      return res.status(404).json({ error: "Subscription item not found" });
+    }
+
+    subscription.Subscriptions[itemIndex].status = status;
     await subscription.save();
 
-    res.status(200).json({
-      success: true,
-      message: "Subscription paused successfully",
-      subscription,
-    });
+    res.status(200).json(subscription);
   } catch (error) {
-    console.error("Pause subscription error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to pause subscription",
-      error: error.message,
-    });
+    res.status(400).json({ error: error.message });
   }
 };
 
-// Resume subscription
-const resumeSubscription = async (req, res) => {
+// Delete a subscription
+const deleteSubscription = async (req, res) => {
   try {
-    const { id } = req.params;
+    const subscriptionId = req.params.subscriptionId;
 
-    const subscription = await Subscription.findOne({
-      _id: id,
-      user: req.user._id,
-    });
-
-    if (!subscription) {
-      return res.status(404).json({
-        success: false,
-        message: "Subscription not found",
-      });
-    }
-
-    subscription.status = "active";
-    // Set next delivery date to tomorrow if it's in the past
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    if (subscription.nextDeliveryDate < new Date()) {
-      subscription.nextDeliveryDate = tomorrow;
-    }
-
-    await subscription.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Subscription resumed successfully",
-      subscription,
-    });
-  } catch (error) {
-    console.error("Resume subscription error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to resume subscription",
-      error: error.message,
-    });
-  }
-};
-
-// Cancel subscription
-const cancelSubscription = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const subscription = await Subscription.findOne({
-      _id: id,
-      user: req.user._id,
-    });
-
-    if (!subscription) {
-      return res.status(404).json({
-        success: false,
-        message: "Subscription not found",
-      });
-    }
-
-    subscription.status = "cancelled";
-    await subscription.save();
-
-    // Cancel any pending orders for this subscription
-    await Order.updateMany(
-      {
-        subscription: id,
-        status: "pending",
-      },
-      {
-        status: "cancelled",
-      }
+    const deletedSubscription = await Subscription.findByIdAndDelete(
+      subscriptionId
     );
 
-    res.status(200).json({
-      success: true,
-      message: "Subscription cancelled successfully",
-    });
+    if (!deletedSubscription) {
+      return res.status(404).json({ error: "Subscription not found" });
+    }
+
+    res.status(200).json({ message: "Subscription deleted successfully" });
   } catch (error) {
-    console.error("Cancel subscription error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to cancel subscription",
-      error: error.message,
-    });
+    res.status(500).json({ error: error.message });
   }
 };
 
-// Set vacation mode
-const setVacationMode = async (req, res) => {
+// Get active subscriptions (where endDate is in future)
+const getActiveSubscriptions = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { startDate, endDate } = req.body;
+    const userId = req.params.userId;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    if (!startDate || !endDate) {
-      return res.status(400).json({
-        success: false,
-        message: "Start date and end date are required",
-      });
+    const subscriptions = await Subscription.find({
+      user: userId,
+      "Subscriptions.endDate": { $gte: today },
+    })
+      .populate("Subscriptions.product", "name price image")
+      .populate("Subscriptions.address");
+
+    if (!subscriptions || subscriptions.length === 0) {
+      return res.status(404).json({ message: "No active subscriptions found" });
     }
 
-    const subscription = await Subscription.findOne({
-      _id: id,
-      user: req.user._id,
-    });
+    // Filter only active subscription items
+    const result = subscriptions
+      .map((sub) => ({
+        ...sub.toObject(),
+        Subscriptions: sub.Subscriptions.filter(
+          (item) => new Date(item.endDate) >= today
+        ),
+      }))
+      .filter((sub) => sub.Subscriptions.length > 0);
 
-    if (!subscription) {
-      return res.status(404).json({
-        success: false,
-        message: "Subscription not found",
-      });
-    }
-
-    subscription.isVacationMode = true;
-    subscription.vacationDetails = {
-      startDate: new Date(startDate),
-      endDate: new Date(endDate),
-    };
-
-    // Calculate next delivery date after vacation
-    const vacationEndDate = new Date(endDate);
-    vacationEndDate.setDate(vacationEndDate.getDate() + 1);
-
-    if (vacationEndDate > subscription.nextDeliveryDate) {
-      subscription.nextDeliveryDate = vacationEndDate;
-    }
-
-    await subscription.save();
-
-    // Cancel any pending orders during vacation period
-    await Order.updateMany(
-      {
-        subscription: id,
-        status: "pending",
-        deliveryDate: {
-          $gte: new Date(startDate),
-          $lte: new Date(endDate),
-        },
-      },
-      {
-        status: "cancelled",
-      }
-    );
-
-    res.status(200).json({
-      success: true,
-      message: "Vacation mode set successfully",
-      subscription,
-    });
+    res.status(200).json(result);
   } catch (error) {
-    console.error("Set vacation mode error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to set vacation mode",
-      error: error.message,
-    });
-  }
-};
-
-// Cancel vacation mode
-const cancelVacationMode = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const subscription = await Subscription.findOne({
-      _id: id,
-      user: req.user._id,
-    });
-
-    if (!subscription) {
-      return res.status(404).json({
-        success: false,
-        message: "Subscription not found",
-      });
-    }
-
-    subscription.isVacationMode = false;
-    subscription.vacationDetails = {
-      startDate: null,
-      endDate: null,
-    };
-
-    // Update next delivery date to tomorrow if needed
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    if (subscription.nextDeliveryDate < new Date()) {
-      subscription.nextDeliveryDate = tomorrow;
-    }
-
-    await subscription.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Vacation mode cancelled successfully",
-      subscription,
-    });
-  } catch (error) {
-    console.error("Cancel vacation mode error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to cancel vacation mode",
-      error: error.message,
-    });
+    res.status(500).json({ error: error.message });
   }
 };
 
 module.exports = {
   createSubscription,
+  getAllSubscriptions,
   getUserSubscriptions,
-  pauseSubscription,
-  resumeSubscription,
-  cancelSubscription,
-  setVacationMode,
-  cancelVacationMode,
+  getSubscriptionById,
   updateSubscription,
+  updateSubscriptionItemStatus,
+  deleteSubscription,
+  getActiveSubscriptions,
 };

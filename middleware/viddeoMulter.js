@@ -1,9 +1,7 @@
-
-
 const multer = require("multer");
 const path = require("path");
 
-const createUploader = (folder) => {
+const createVideoUploader = (folder) => {
   const storage = multer.diskStorage({
     destination: function (req, file, cb) {
       cb(null, path.join(__dirname, `../uploads/${folder}`));
@@ -18,21 +16,23 @@ const createUploader = (folder) => {
   });
 
   const fileFilter = (req, file, cb) => {
-    const filetypes = /jpeg|jpg|png|gif|svg/;
+    const filetypes = /mp4|mov|avi|mkv|webm|flv|wmv|m4v/;
     const mimetype = filetypes.test(file.mimetype);
-    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+    const extname = filetypes.test(
+      path.extname(file.originalname).toLowerCase()
+    );
 
     if (mimetype && extname) {
       return cb(null, true);
     }
-    cb("Error: Only image files are allowed!");
+    cb("Error: Only video files are allowed!");
   };
 
   return multer({
     storage: storage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit for videos
     fileFilter: fileFilter,
   });
 };
 
-module.exports = createUploader;
+module.exports = createVideoUploader;
