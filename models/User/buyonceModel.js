@@ -29,10 +29,11 @@ const buyonceSchema = new mongoose.Schema(
           type: String,
           default: "04:00-07:00 AM",
         },
-       deliveryDate: {  // Remove the duplicate "Date" in the name
-  type: Date,
-  required: true
-},
+        deliveryDate: {
+          // Remove the duplicate "Date" in the name
+          type: Date,
+          required: true,
+        },
         address: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "Address",

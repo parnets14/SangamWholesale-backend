@@ -14,6 +14,11 @@ const app = express();
 // Body parser
 app.use(express.json());
 
+// Basic route
+app.get("/", (req, res) => {
+  res.send(`Welcome to Hebbevu Fresh:( LocalHost ${PORT})`);
+});
+
 //Admin Routes
 app.use("/api/admin", require("./routes/Admin/adminRoutes"));
 app.use("/api/banner", require("./routes/Admin/bannerRoutes"));
@@ -33,10 +38,10 @@ app.use("/api/cart", require("./routes/User/cartRoutes"));
 app.use("/api/wallet", require("./routes/User/walletRoutes"));
 app.use("/api/orders", require("./routes/User/orderRoutes"));
 app.use("/api/deliverypref", require("./routes/User/deliveryprefRoutes"));
-// Basic route
-app.get("/", (req, res) => {
-  res.send("API is running...");
-});
+app.use("/api/vacations", require("./routes/User/vactionRoutes"));
+
+// Delivery Routes
+app.use("/api/delivery", require("./routes/Driver/driverRoute"));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

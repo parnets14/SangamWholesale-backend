@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User/userModel");
 const Admin = require("../models/Admin/adminModel");
-const Delivery = require("../models/Delivery/deliveryModel");
+const Delivery = require("../models/Driver/driverModel");
 
 //userMiddleware
 const userProtect = async (req, res, next) => {
@@ -29,7 +29,7 @@ const userProtect = async (req, res, next) => {
   }
 };
 //Deliveryboy Middleware
-const deliveryboyProtect = async (req, res, next) => {
+const driverProtect = async (req, res, next) => {
   let token;
 
   if (
@@ -87,4 +87,4 @@ const adminProtect = async (req, res, next) => {
   }
 };
 
-module.exports = { userProtect, adminProtect, deliveryboyProtect };
+module.exports = { userProtect, adminProtect, driverProtect };

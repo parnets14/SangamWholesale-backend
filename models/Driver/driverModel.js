@@ -1,18 +1,22 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
-const deliverySchema = new Schema(
+const DriverSchema = new Schema(
   {
     name: {
       type: String,
-    },
-    mobile: {
-      type: Number,
+      required: true,
     },
     email: {
       type: String,
+      required: true,
+      unique: true,
     },
-   
+    phone: {
+      type: String,
+      required: true,
+      unique: true,
+    },
     blockstatus: {
       type: Boolean,
       default: true
@@ -32,8 +36,22 @@ const deliverySchema = new Schema(
     driverId:{
         type: Number 
     },
+    isProfileComplete: {
+      type: Boolean,
+      default: false,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    otp: {
+      type: String,
+    },
+    otpExpiry: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Deliveryboy", deliverySchema);
+module.exports = mongoose.model("Driver", DriverSchema);
