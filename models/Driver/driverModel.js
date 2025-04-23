@@ -19,22 +19,22 @@ const DriverSchema = new Schema(
     },
     blockstatus: {
       type: Boolean,
-      default: true
+      default: true,
     },
     aadharFront: {
-      type: String 
+      type: String,
     },
     aadharBack: {
-      type: String 
+      type: String,
     },
     panImage: {
-      type: String 
+      type: String,
     },
     dlImage: {
-      type: String 
+      type: String,
     },
-    driverId:{
-        type: Number 
+    driverId: {
+      type: Number,
     },
     isProfileComplete: {
       type: Boolean,

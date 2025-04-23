@@ -56,8 +56,8 @@ exports.sendOTP = async (req, res) => {
         phone,
         otp,
         otpExpiry,
-        name: "Pending Registration", // Temporary placeholder
-        email: `${phone.replace(/\D/g, "")}@temp.pending`, // Temporary placeholder
+        name: "Pending Registration",
+        email: `${phone.replace(/\D/g, "")}@temp.pending`,
       });
     } else {
       // Update existing driver for login
