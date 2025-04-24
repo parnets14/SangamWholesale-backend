@@ -209,3 +209,112 @@ module.exports = {
   confirmOrder,
   getUserOrders,
 };
+
+
+
+
+
+
+
+// // controllers/User/orderController.js
+// const Order = require("../../models/Order/orderModel");
+// const Cart = require("../../models/User/cartModel");
+// const SubscriptionOrder = require("../../models/Subscription/subscriptionOrderModel");
+// const socket = require("../../utils/socket");
+
+// const orderController = {
+//   // Create order from cart
+//   createOrder: async (req, res) => {
+//     try {
+//       const { addressId, paymentMethod } = req.body;
+//       const io = socket.getIO();
+
+//       // Get cart
+//       const cart = await Cart.findOne({ user: req.user._id })
+//         .populate({
+//           path: "items.productRef",
+//           refPath: "items.productType"
+//         });
+
+//       if (!cart || cart.items.length === 0) {
+//         return res.status(400).json({
+//           success: false,
+//           message: "Cart is empty"
+//         });
+//       }
+
+//       // Create order logic...
+//       // After order creation:
+      
+//       if (buyonceItems.length > 0) {
+//         const order = await Order.create({
+//           // ... existing order creation code ...
+//         });
+
+//         // Emit order created event
+//         io.to(`user_${req.user._id}`).emit("orderCreated", {
+//           orderId: order._id,
+//           status: "pending",
+//           message: "Your order has been placed successfully!"
+//         });
+//       }
+
+//       // For subscription orders
+//       if (subscriptionItems.length > 0) {
+//         const subscriptionOrders = await SubscriptionOrder.insertMany(
+//           // ... existing subscription creation code ...
+//         );
+
+//         // Emit subscription created event
+//         subscriptionOrders.forEach(subscription => {
+//           io.to(`user_${req.user._id}`).emit("subscriptionCreated", {
+//             subscriptionId: subscription._id,
+//             status: "active",
+//             message: "Your subscription has been activated!"
+//           });
+//         });
+//       }
+
+//       // Rest of the code...
+//     } catch (error) {
+//       res.status(500).json({
+//         success: false,
+//         message: error.message
+//       });
+//     }
+//   },
+
+//   // Update order status
+//   updateOrderStatus: async (req, res) => {
+//     try {
+//       const { orderId } = req.params;
+//       const { status } = req.body;
+//       const io = socket.getIO();
+
+//       const order = await Order.findByIdAndUpdate(
+//         orderId,
+//         { orderStatus: status },
+//         { new: true }
+//       );
+
+//       // Emit status update event
+//       io.to(`user_${order.user}`).emit("orderStatusUpdate", {
+//         orderId: order._id,
+//         status: order.orderStatus,
+//         message: `Your order status has been updated to ${status}`
+//       });
+
+//       res.json({
+//         success: true,
+//         data: order
+//       });
+//     } catch (error) {
+//       res.status(500).json({
+//         success: false,
+//         message: error.message
+//       });
+//     }
+//   }
+// };
+
+// module.exports = orderController;
