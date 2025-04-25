@@ -141,6 +141,7 @@ app.get("/", (req, res) => {
 
 // Admin Routes
 app.use("/api/admin", require("./routes/Admin/adminRoutes"));
+app.use("/api/welcome", require("./routes/Admin/welcomeRoutes"));
 app.use("/api/banner", require("./routes/Admin/bannerRoutes"));
 app.use("/api/categories", require("./routes/Admin/categoryRoutes"));
 app.use("/api/products", require("./routes/Admin/productRoutes"));

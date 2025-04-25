@@ -16,7 +16,6 @@ router.post(
   uploadCategory.single("icon"),
   categoryController.createCategory
 );
-
 router.put(
   "/:id",
   adminProtect,

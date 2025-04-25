@@ -1,5 +1,5 @@
 const Diccover = require("../../models/Admin/discoverModel");
-const createVideoUploader = require("../../middleware/viddeoMulter"); // Adjust path as needed
+const createVideoUploader = require("../../middleware/viddeoMulter");
 const videoUpload = createVideoUploader("discover-videos");
 const path = require("path");
 const fs = require("fs");
@@ -83,7 +83,6 @@ exports.createDiscoverItem = async (req, res) => {
           size: req.file.size,
           mimetype: req.file.mimetype,
         },
-        
       });
 
       res.status(201).json({
