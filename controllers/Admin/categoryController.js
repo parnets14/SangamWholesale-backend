@@ -7,14 +7,18 @@ const getAllCategories = async (req, res) => {
   try {
     const categories = await Category.find();
     // Map categories to include full image URL
-    const categoriesWithImages = categories.map(category => ({
+    const categoriesWithImages = categories.map((category) => ({
       ...category._doc,
-      icon: `${req.protocol}://${req.get('host')}/uploads/categories/${category.icon}`
+      icon: `${req.protocol}://${req.get("host")}/uploads/categories/${
+        category.icon
+      }`,
     }));
     res.status(200).json({ success: true, categories: categoriesWithImages });
   } catch (error) {
     console.error("getAllCategories error:", error);
-    res.status(500).json({ success: false, message: "Failed to fetch categories" });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch categories" });
   }
 };
 
@@ -22,11 +26,11 @@ const getAllCategories = async (req, res) => {
 const createCategory = async (req, res) => {
   try {
     const { name } = req.body;
-    
+
     if (!name || !req.file) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Name and icon image are required" 
+      return res.status(400).json({
+        success: false,
+        message: "Name and icon image are required",
       });
     }
 
@@ -36,24 +40,26 @@ const createCategory = async (req, res) => {
       if (req.file) {
         fs.unlinkSync(req.file.path);
       }
-      return res.status(400).json({ 
-        success: false, 
-        message: "Category already exists" 
+      return res.status(400).json({
+        success: false,
+        message: "Category already exists",
       });
     }
 
-    const category = await Category.create({ 
-      name, 
-      icon: req.file.filename 
+    const category = await Category.create({
+      name,
+      icon: req.file.filename,
     });
 
-    res.status(201).json({ 
-      success: true, 
-      message: "Category created", 
+    res.status(201).json({
+      success: true,
+      message: "Category created",
       category: {
         ...category._doc,
-        icon: `${req.protocol}://${req.get('host')}/uploads/categories/${req.file.filename}`
-      }
+        icon: `${req.protocol}://${req.get("host")}/uploads/categories/${
+          req.file.filename
+        }`,
+      },
     });
   } catch (error) {
     // Clean up uploaded file if error occurs
@@ -61,7 +67,9 @@ const createCategory = async (req, res) => {
       fs.unlinkSync(req.file.path);
     }
     console.error("createCategory error:", error);
-    res.status(500).json({ success: false, message: "Failed to create category" });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to create category" });
   }
 };
 
@@ -74,15 +82,18 @@ const updateCategory = async (req, res) => {
     const category = await Category.findById(id);
     if (!category) {
       if (req.file) fs.unlinkSync(req.file.path);
-      return res.status(404).json({ 
-        success: false, 
-        message: "Category not found" 
+      return res.status(404).json({
+        success: false,
+        message: "Category not found",
       });
     }
 
     // Delete old image if new one is uploaded
     if (req.file) {
-      const oldImagePath = path.join(__dirname, `../../uploads/categories/${category.icon}`);
+      const oldImagePath = path.join(
+        __dirname,
+        `../../uploads/categories/${category.icon}`
+      );
       if (fs.existsSync(oldImagePath)) {
         fs.unlinkSync(oldImagePath);
       }
@@ -93,20 +104,26 @@ const updateCategory = async (req, res) => {
 
     await category.save();
 
-    res.status(200).json({ 
-      success: true, 
-      message: "Category updated", 
+    res.status(200).json({
+      success: true,
+      message: "Category updated",
       category: {
         ...category._doc,
-        icon: req.file 
-          ? `${req.protocol}://${req.get('host')}/uploads/categories/${req.file.filename}`
-          : `${req.protocol}://${req.get('host')}/uploads/categories/${category.icon}`
-      }
+        icon: req.file
+          ? `${req.protocol}://${req.get("host")}/uploads/categories/${
+              req.file.filename
+            }`
+          : `${req.protocol}://${req.get("host")}/uploads/categories/${
+              category.icon
+            }`,
+      },
     });
   } catch (error) {
     if (req.file) fs.unlinkSync(req.file.path);
     console.error("updateCategory error:", error);
-    res.status(500).json({ success: false, message: "Failed to update category" });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to update category" });
   }
 };
 
@@ -117,27 +134,30 @@ const deleteCategory = async (req, res) => {
 
     const category = await Category.findByIdAndDelete(id);
     if (!category) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Category not found" 
+      return res.status(404).json({
+        success: false,
+        message: "Category not found",
       });
     }
 
     // Delete associated image
-    const imagePath = path.join(__dirname, `../../uploads/categories/${category.icon}`);
+    const imagePath = path.join(
+      __dirname,
+      `../../uploads/categories/${category.icon}`
+    );
     if (fs.existsSync(imagePath)) {
       fs.unlinkSync(imagePath);
     }
 
-    res.status(200).json({ 
-      success: true, 
-      message: "Category deleted" 
+    res.status(200).json({
+      success: true,
+      message: "Category deleted",
     });
   } catch (error) {
     console.error("deleteCategory error:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Failed to delete category" 
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete category",
     });
   }
 };
