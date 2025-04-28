@@ -5,15 +5,13 @@ const { adminProtect } = require("../../middleware/Middleware");
 // const upload = require("../../middleware/multer");
 const createUploader = require("../../middleware/multer");
 
-
 // For categories
 const uploadCategory = createUploader("cities");
 
 // Public routes
-router.get("/all", cityController.getAllCities);
+router.get("/", cityController.getAllCities);
 
 // Admin-protected routes
-
 
 router.post(
   "/",

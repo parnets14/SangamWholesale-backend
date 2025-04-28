@@ -10,7 +10,7 @@ const getAllCities = async (req, res) => {
     // Append full URL to icon path
     const citiesWithIcons = cities.map((city) => ({
       ...city._doc,
-      icon: `${req.protocol}://${req.get("host")}/uploads/cities/${city.icon}`,
+      icon: city.icon,
     }));
 
     res.status(200).json({ success: true, cities: citiesWithIcons });
@@ -26,7 +26,7 @@ const createCity = async (req, res) => {
     const { name } = req.body;
 
     if (!name || !req.file) {
-      if (req.file) fs.unlinkSync(req.file.path); 
+      if (req.file) fs.unlinkSync(req.file.path);
       return res.status(400).json({
         success: false,
         message: "Name and icon are required",
@@ -54,9 +54,7 @@ const createCity = async (req, res) => {
       message: "City created successfully",
       city: {
         ...city._doc,
-        icon: `${req.protocol}://${req.get("host")}/uploads/cities/${
-          req.file.filename
-        }`,
+        icon: req.file.filename,
       },
     });
   } catch (error) {
@@ -99,11 +97,7 @@ const updateCity = async (req, res) => {
       message: "City updated",
       city: {
         ...city._doc,
-        icon: req.file
-          ? `${req.protocol}://${req.get("host")}/uploads/cities/${
-              req.file.filename
-            }`
-          : `${req.protocol}://${req.get("host")}/uploads/cities/${city.icon}`,
+        icon: req.file ? req.file.filename : city.icon,
       },
     });
   } catch (error) {

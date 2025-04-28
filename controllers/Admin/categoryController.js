@@ -9,9 +9,7 @@ const getAllCategories = async (req, res) => {
     // Map categories to include full image URL
     const categoriesWithImages = categories.map((category) => ({
       ...category._doc,
-      icon: `${req.protocol}://${req.get("host")}/uploads/categories/${
-        category.icon
-      }`,
+      icon: category.icon,
     }));
     res.status(200).json({ success: true, categories: categoriesWithImages });
   } catch (error) {
@@ -56,9 +54,7 @@ const createCategory = async (req, res) => {
       message: "Category created",
       category: {
         ...category._doc,
-        icon: `${req.protocol}://${req.get("host")}/uploads/categories/${
-          req.file.filename
-        }`,
+        icon: req.file.filename,
       },
     });
   } catch (error) {
@@ -109,13 +105,7 @@ const updateCategory = async (req, res) => {
       message: "Category updated",
       category: {
         ...category._doc,
-        icon: req.file
-          ? `${req.protocol}://${req.get("host")}/uploads/categories/${
-              req.file.filename
-            }`
-          : `${req.protocol}://${req.get("host")}/uploads/categories/${
-              category.icon
-            }`,
+        icon: req.file ? req.file.filename : category.icon,
       },
     });
   } catch (error) {

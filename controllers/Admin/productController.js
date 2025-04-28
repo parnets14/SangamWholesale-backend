@@ -57,9 +57,7 @@ const createProduct = async (req, res) => {
       message: "Product created successfully",
       product: {
         ...product._doc,
-        image: `${req.protocol}://${req.get("host")}/uploads/products/${
-          req.file.filename
-        }`,
+        image: req.file.filename,
       },
     });
   } catch (error) {
@@ -83,9 +81,7 @@ const getAllProducts = async (req, res) => {
 
     const productsWithImages = products.map((product) => ({
       ...product._doc,
-      image: `${req.protocol}://${req.get("host")}/uploads/products/${
-        product.image
-      }`,
+      image: product.image,
     }));
 
     res.status(200).json({ success: true, products: productsWithImages });
@@ -158,13 +154,7 @@ const updateProduct = async (req, res) => {
       message: "Product updated",
       product: {
         ...product._doc,
-        image: req.file
-          ? `${req.protocol}://${req.get("host")}/uploads/products/${
-              req.file.filename
-            }`
-          : `${req.protocol}://${req.get("host")}/uploads/products/${
-              product.image
-            }`,
+        image: req.file ? req.file.filename : product.image,
       },
     });
   } catch (error) {

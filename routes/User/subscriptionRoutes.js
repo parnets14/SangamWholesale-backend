@@ -5,6 +5,7 @@ const { userProtect, adminProtect } = require("../../middleware/Middleware");
 
 // User routes
 router.post("/", userProtect, subscriptionController.createSubscription);
+router.get("/", userProtect, subscriptionController.createSubscription);
 router.get(
   "/user/:userId",
   userProtect,
