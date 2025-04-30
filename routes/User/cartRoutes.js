@@ -7,10 +7,10 @@ const { userProtect } = require("../../middleware/Middleware");
 router.get("/", userProtect, cartController.getCombinedCart);
 
 // Update specific item
-router.put("/items/:itemId", userProtect, cartController.updateCartItem);
+router.put("/:itemId", userProtect, cartController.updateCartItem);
 
 // Remove item from orders
-router.delete("/items/:itemId", userProtect, cartController.removeFromCart);
+router.delete("/:itemId", userProtect, cartController.removeFromCart);
 
 // Apply coupon to orders
 router.post("/apply-coupon", userProtect, cartController.applyCoupon);

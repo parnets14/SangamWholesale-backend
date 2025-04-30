@@ -1,25 +1,5 @@
+// models/Order/orderModel.js
 const mongoose = require("mongoose");
-
-const orderItemSchema = new mongoose.Schema({
-  productType: {
-    type: String,
-    enum: ["buyonce", "subscription"],
-    required: true,
-  },
-  product: {
-    type: mongoose.Schema.Types.ObjectId,
-    refPath: "items.productType",
-    required: true,
-  },
-  quantity: {
-    type: Number,
-    required: true,
-  },
-  price: {
-    type: Number,
-    required: true,
-  },
-});
 
 const orderSchema = new mongoose.Schema(
   {
@@ -28,29 +8,81 @@ const orderSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    items: [orderItemSchema],
-    total: {
+    items: [
+      {
+        productType: {
+          type: String,
+          enum: ["Product", "Product"],
+          required: true,
+        },
+        product: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Product",
+          required: true,
+        },
+        quantity: {
+          type: Number,
+          required: true,
+          min: 1,
+        },
+        price: {
+          type: Number,
+          required: true,
+        },
+      },
+    ],
+    deliveryAddress: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Address",
+      required: true,
+    },
+    totalAmount: {
+      type: Number,
+      required: true,
+    },
+    discount: {
+      type: Number,
+      default: 0,
+    },
+    finalAmount: {
       type: Number,
       required: true,
     },
     paymentMethod: {
       type: String,
-      enum: ["wallet", "cod"],
-      default: "wallet",
+      required: true,
+      enum: ["cod", "online", "wallet"],
     },
-    status: {
+    paymentStatus: {
       type: String,
-      enum: ["pending", "processing", "shipped", "delivered", "cancelled"],
+      enum: ["pending", "completed", "failed"],
       default: "pending",
     },
-    address: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Address",
+    orderStatus: {
+      type: String,
+      enum: [
+        "pending",
+        "confirmed",
+        "processing",
+        "out_for_delivery",
+        "delivered",
+        "cancelled",
+      ],
+      default: "pending",
+    },
+    deliverySlot: {
+      type: String,
+      enum: ["morning", "afternoon", "evening"],
+      required: true,
+    },
+    deliveryDate: {
+      type: Date,
       required: true,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-const Order = mongoose.model("Order", orderSchema);
-module.exports = Order;
+module.exports = mongoose.model("Order", orderSchema);

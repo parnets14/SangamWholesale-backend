@@ -22,7 +22,7 @@ exports.getAllWelcomes = async (req, res) => {
     // Add full URLs to each welcome
     const welcomesWithUrls = welcomes.map((welcome) => ({
       ...welcome.toObject(),
-      image: `${req.protocol}://${req.get("host")}/${welcome.image}`,
+      image: welcome.image,
     }));
 
     res.status(200).json({
@@ -75,9 +75,7 @@ exports.createWelcome = async (req, res) => {
       message: "Welcome created successfully",
       data: {
         ...welcome.toObject(),
-        image: `${req.protocol}://${req.get("host")}/uploads/welcome/${
-          req.file.filename
-        }`,
+        image: req.file.filename,
       },
     });
   } catch (error) {
@@ -155,9 +153,7 @@ exports.updateWelcome = async (req, res) => {
       message: "Welcome updated successfully",
       data: {
         ...updatedWelcome.toObject(),
-        image: `${req.protocol}://${req.get("host")}/uploads/welcome/${
-          updatedWelcome.image
-        }`,
+        image: updatedWelcome.image,
       },
     });
   } catch (error) {

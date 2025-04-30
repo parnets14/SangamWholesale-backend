@@ -96,14 +96,18 @@ const getAllBuyonceOrders = async (req, res) => {
 // Get BuyOnce orders for a specific user
 const getUserBuyonceOrders = async (req, res) => {
   try {
-    const userId = req.params.userId;
+    const userId = req.user._id; // Get from auth middleware (not params)
+    console.log("Authenticated userId:", userId);
 
     const orders = await Buyonce.find({ user: userId })
       .populate("order.productId", "name price image")
       .populate("order.address");
 
     if (!orders || orders.length === 0) {
-      return res.status(404).json({ message: "No orders found for this user" });
+      return res.status(200).json({
+        message: "No orders found for this user",
+        userId,
+      });
     }
 
     res.status(200).json(orders);
@@ -111,7 +115,6 @@ const getUserBuyonceOrders = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
 // Get a single BuyOnce order by ID
 const getBuyonceOrderById = async (req, res) => {
   try {

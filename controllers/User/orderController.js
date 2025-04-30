@@ -1,320 +1,333 @@
-const Cart = require("../../models/User/cartModel");
+// controllers/User/orderController.js
 const Order = require("../../models/User/orderModel");
-const Wallet = require("../../models/User/walletModel");
-const Product = require("../../models/Admin/productModel");
+const Buyonce = require("../../models/User/buyonceModel");
+const Subscription = require("../../models/User/subscriptionModel");
 const Address = require("../../models/User/addressModel");
-const mongoose = require("mongoose");
+const Wallet = require("../../models/User/walletModel");
 
-// Place order using wallet balance
-const confirmOrder = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+// Make sure the model names match what's in your refPath
+// This registers aliases for your models
 
-  try {
-    const { paymentMethod = "cod", addressId } = req.body;
-    const userId = req.user._id;
 
-    // 1. Validate address exists and belongs to user
-    const address = await Address.findOne({
-      _id: addressId,
-      user: userId,
-    }).session(session);
+// Make sure your models are registered correctly
 
-    if (!address) {
-      await session.abortTransaction();
-      return res.status(400).json({
-        success: false,
-        error: "Address not found or does not belong to you",
+
+const orderController = {
+  // Place Order
+  confirmOrder: async (req, res) => {
+    console.log("Starting order confirmation process...");
+    try {
+      const { addressId, paymentMethod } = req.body;
+      const userId = req.user._id;
+
+      console.log("Order request:", {
+        userId,
+        addressId,
+        paymentMethod,
       });
-    }
 
-    // 2. Get user's cart with proper error handling
-    const cart = await Cart.findOne({ user: userId })
-      .populate({
-        path: "items.product",
-        select: "name price stock",
-        model: "Product",
-      })
-      .session(session);
-
-    if (!cart) {
-      await session.abortTransaction();
-      return res.status(400).json({
-        success: false,
-        error: "No cart found for this user",
+      // 1. Get cart items from Buyonce and Subscription models (like in cartController)
+      const buyonceOrders = await Buyonce.find({ 
+        user: userId,
+        'order.status': 'upcoming' // Only include pending/upcoming items
+      }).populate({
+        path: 'order.productId',
+        select: 'name price images'
       });
-    }
 
-    if (!cart.items || cart.items.length === 0) {
-      await session.abortTransaction();
-      return res.status(400).json({
-        success: false,
-        error: "Your cart is empty",
+      const subscriptions = await Subscription.find({ 
+        user: userId,
+        'Subscriptions.status': 'upcoming' // Only include pending/upcoming items
+      }).populate({
+        path: 'Subscriptions.product',
+        select: 'name price images'
       });
-    }
 
-    // 3. Validate all cart items
-    const invalidItems = cart.items.filter((item) => !item.product);
-    if (invalidItems.length > 0) {
-      await session.abortTransaction();
-      return res.status(400).json({
-        success: false,
-        error: "Some products in your cart are no longer available",
-        invalidItems: invalidItems.map((item) => item._id),
-      });
-    }
-
-    // 4. Calculate total and validate stock
-    let totalAmount = 0;
-    const outOfStockItems = [];
-
-    for (const item of cart.items) {
-      const availableStock = item.product.stock;
-      const requestedQty = item.quantity;
-
-      if (availableStock < requestedQty) {
-        outOfStockItems.push({
-          product: item.product._id,
-          name: item.product.name,
-          available: availableStock,
-          requested: requestedQty,
-        });
-      }
-
-      totalAmount += item.product.price * item.quantity;
-    }
-
-    if (outOfStockItems.length > 0) {
-      await session.abortTransaction();
-      return res.status(400).json({
-        success: false,
-        error: "Some items are out of stock",
-        outOfStockItems,
-      });
-    }
-
-    // 5. Handle wallet payment
-    if (paymentMethod === "wallet") {
-      const wallet = await Wallet.findOne({ user: userId }).session(session);
-
-      if (!wallet) {
-        await session.abortTransaction();
-        return res.status(400).json({
-          success: false,
-          error: "Wallet not found",
-        });
-      }
-
-      if (wallet.balance < totalAmount) {
-        await session.abortTransaction();
-        return res.status(400).json({
-          success: false,
-          error: "Insufficient wallet balance",
-          balance: wallet.balance,
-          required: totalAmount,
-        });
-      }
-
-      wallet.balance -= totalAmount;
-      wallet.transactions.push({
-        amount: totalAmount,
-        type: "debit",
-        description: `Payment for order`,
-        metadata: {
-          orderTotal: totalAmount,
-        },
-      });
-      await wallet.save({ session });
-    }
-
-    // 6. Create the order
-    const orderItems = cart.items.map((item) => ({
-      product: item.product._id,
-      quantity: item.quantity,
-      price: item.product.price,
-      productType: item.productType,
-      ...(item.productType === "subscription" && {
-        frequency: item.frequency,
-        startDate: item.startDate,
-        endDate: item.endDate,
-      }),
-    }));
-
-    const order = new Order({
-      user: userId,
-      items: orderItems,
-      totalAmount,
-      address: addressId,
-      paymentMethod,
-      paymentStatus: paymentMethod === "cod" ? "pending" : "completed",
-      orderStatus: "processing",
-    });
-
-    await order.save({ session });
-
-    // 7. Update product stock
-    const bulkOps = cart.items.map((item) => ({
-      updateOne: {
-        filter: { _id: item.product._id },
-        update: { $inc: { stock: -item.quantity } },
-      },
-    }));
-
-    await Product.bulkWrite(bulkOps, { session });
-
-    // 8. Clear the cart
-    await Cart.findByIdAndDelete(cart._id).session(session);
-
-    await session.commitTransaction();
-
-    // 9. Return the complete order details
-    const populatedOrder = await Order.findById(order._id)
-      .populate("items.product")
-      .populate("address");
-
-    res.status(201).json({
-      success: true,
-      message: "Order confirmed successfully",
-      order: populatedOrder,
-    });
-  } catch (error) {
-    await session.abortTransaction();
-    console.error("Order confirmation failed:", error);
-    res.status(500).json({
-      success: false,
-      error: "Order confirmation failed",
-      systemError:
-        process.env.NODE_ENV === "development" ? error.message : undefined,
-    });
-  } finally {
-    session.endSession();
-  }
-};
-
-// Get user orders
-const getUserOrders = async (req, res) => {
-  try {
-    const orders = await Order.find({ user: req.user._id })
-      .populate("items.product")
-      .populate("address")
-      .sort("-createdAt");
-
-    res.status(200).json(orders);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-module.exports = {
-  confirmOrder,
-  getUserOrders,
-};
-
-
-
-
-
-
-
-// // controllers/User/orderController.js
-// const Order = require("../../models/Order/orderModel");
-// const Cart = require("../../models/User/cartModel");
-// const SubscriptionOrder = require("../../models/Subscription/subscriptionOrderModel");
-// const socket = require("../../utils/socket");
-
-// const orderController = {
-//   // Create order from cart
-//   createOrder: async (req, res) => {
-//     try {
-//       const { addressId, paymentMethod } = req.body;
-//       const io = socket.getIO();
-
-//       // Get cart
-//       const cart = await Cart.findOne({ user: req.user._id })
-//         .populate({
-//           path: "items.productRef",
-//           refPath: "items.productType"
-//         });
-
-//       if (!cart || cart.items.length === 0) {
-//         return res.status(400).json({
-//           success: false,
-//           message: "Cart is empty"
-//         });
-//       }
-
-//       // Create order logic...
-//       // After order creation:
+      // Check if cart is empty
+      const buyonceItemsCount = buyonceOrders.reduce((count, order) => count + order.order.length, 0);
+      const subscriptionItemsCount = subscriptions.reduce((count, sub) => count + sub.Subscriptions.length, 0);
       
-//       if (buyonceItems.length > 0) {
-//         const order = await Order.create({
-//           // ... existing order creation code ...
-//         });
+      if (buyonceItemsCount === 0 && subscriptionItemsCount === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Your cart is empty"
+        });
+      }
 
-//         // Emit order created event
-//         io.to(`user_${req.user._id}`).emit("orderCreated", {
-//           orderId: order._id,
-//           status: "pending",
-//           message: "Your order has been placed successfully!"
-//         });
-//       }
+      console.log("Cart items found:", {
+        buyonceItems: buyonceItemsCount,
+        subscriptionItems: subscriptionItemsCount
+      });
 
-//       // For subscription orders
-//       if (subscriptionItems.length > 0) {
-//         const subscriptionOrders = await SubscriptionOrder.insertMany(
-//           // ... existing subscription creation code ...
-//         );
+      // 2. Validate address
+      const address = await Address.findOne({
+        _id: addressId,
+        user: userId
+      });
 
-//         // Emit subscription created event
-//         subscriptionOrders.forEach(subscription => {
-//           io.to(`user_${req.user._id}`).emit("subscriptionCreated", {
-//             subscriptionId: subscription._id,
-//             status: "active",
-//             message: "Your subscription has been activated!"
-//           });
-//         });
-//       }
+      if (!address) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid delivery address"
+        });
+      }
 
-//       // Rest of the code...
-//     } catch (error) {
-//       res.status(500).json({
-//         success: false,
-//         message: error.message
-//       });
-//     }
-//   },
+      // 3. Calculate totals
+      console.log("Calculating order totals...");
+      let totalAmount = 0;
+      const orderItems = [];
 
-//   // Update order status
-//   updateOrderStatus: async (req, res) => {
-//     try {
-//       const { orderId } = req.params;
-//       const { status } = req.body;
-//       const io = socket.getIO();
+      // Process buyonce items
+      buyonceOrders.forEach(order => {
+        order.order.forEach(item => {
+          if (item.status === 'upcoming') {
+            const itemPrice = item.productId.price;
+            const itemTotal = itemPrice * item.quantity;
+            totalAmount += itemTotal;
 
-//       const order = await Order.findByIdAndUpdate(
-//         orderId,
-//         { orderStatus: status },
-//         { new: true }
-//       );
+            orderItems.push({
+              productType: 'buyonce',
+              product: item.productId._id,
+              quantity: item.quantity,
+              price: itemPrice
+            });
+          }
+        });
+      });
 
-//       // Emit status update event
-//       io.to(`user_${order.user}`).emit("orderStatusUpdate", {
-//         orderId: order._id,
-//         status: order.orderStatus,
-//         message: `Your order status has been updated to ${status}`
-//       });
+      // Process subscription items
+      subscriptions.forEach(sub => {
+        sub.Subscriptions.forEach(item => {
+          if (item.status === 'upcoming') {
+            const itemPrice = item.product.price;
+            const itemTotal = itemPrice * item.quantity;
+            totalAmount += itemTotal;
 
-//       res.json({
-//         success: true,
-//         data: order
-//       });
-//     } catch (error) {
-//       res.status(500).json({
-//         success: false,
-//         message: error.message
-//       });
-//     }
-//   }
-// };
+            orderItems.push({
+              productType: 'subscription',
+              product: item.product._id,
+              quantity: item.quantity,
+              price: itemPrice
+            });
+          }
+        });
+      });
 
-// module.exports = orderController;
+      // Apply discount (if any) - you might need to implement this
+      const discount = 0; // Placeholder
+      const finalAmount = totalAmount - discount;
+
+      console.log("Order calculations:", {
+        totalAmount,
+        discount,
+        finalAmount,
+        itemCount: orderItems.length
+      });
+
+      // 4. Handle wallet payment if selected
+      if (paymentMethod === "wallet") {
+        console.log("Processing wallet payment...");
+        const wallet = await Wallet.findOne({ user: userId });
+
+        if (!wallet || wallet.balance < finalAmount) {
+          return res.status(400).json({
+            success: false,
+            message: "Insufficient wallet balance"
+          });
+        }
+
+        // Deduct from wallet
+        wallet.balance -= finalAmount;
+        await wallet.save();
+        console.log("Wallet balance updated:", wallet.balance);
+      }
+
+      // 5. Create order
+      console.log("Creating order...");
+      const order = await Order.create({
+        user: userId,
+        items: orderItems,
+        deliveryAddress: addressId,
+        totalAmount,
+        discount,
+        finalAmount,
+        paymentMethod,
+        paymentStatus: paymentMethod === "wallet" ? "completed" : "pending",
+        deliverySlot: "morning", // Default value or get from request
+        deliveryDate: new Date(Date.now() + (24 * 60 * 60 * 1000)) // Tomorrow or get from request
+      });
+
+      console.log("Order created:", {
+        orderId: order._id,
+        status: order.orderStatus
+      });
+
+      // 6. Mark items as ordered in original models
+      // Update buyonce items status
+      for (const buyonceOrder of buyonceOrders) {
+        for (const item of buyonceOrder.order) {
+          if (item.status === 'upcoming') {
+            item.status = 'onhold';
+          }
+        }
+        await buyonceOrder.save();
+      }
+
+      // Update subscription items status
+      for (const subscription of subscriptions) {
+        for (const item of subscription.Subscriptions) {
+          if (item.status === 'upcoming') {
+            item.status = 'onhold';
+          }
+        }
+        await subscription.save();
+      }
+
+      res.status(201).json({
+        success: true,
+        message: "Order placed successfully",
+        data: {
+          orderId: order._id,
+          totalAmount,
+          discount,
+          finalAmount,
+          paymentMethod,
+          paymentStatus: order.paymentStatus,
+          orderStatus: order.orderStatus
+        }
+      });
+    } catch (error) {
+      console.error("Order confirmation error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to place order",
+        error: error.message
+      });
+    }
+  },
+
+  // Get User Orders
+  getUserOrders: async (req, res) => {
+    console.log("Fetching user orders...");
+    try {
+      // Fetch orders without population first
+      const orders = await Order.find({ user: req.user._id })
+        .populate("deliveryAddress")
+        .sort({ createdAt: -1 });
+      
+      // Manually handle the population of products
+      const populatedOrders = [];
+      
+      for (const order of orders) {
+        const orderObj = order.toObject();
+        const populatedItems = [];
+        
+        for (const item of orderObj.items) {
+          try {
+            // Find the product based on the productType
+            let product = null;
+            if (item.productType === 'buyonce') {
+              // Use the Product model to find buyonce products
+              const productModel = mongoose.model('Product');
+              product = await productModel.findById(item.product).select('name price image');
+            } else if (item.productType === 'subscription') {
+              // Also use the Product model for subscription products (adjust if needed)
+              const productModel = mongoose.model('Product');
+              product = await productModel.findById(item.product).select('name price image');
+            }
+            
+            // Add the product to the item
+            populatedItems.push({
+              ...item,
+              product: product
+            });
+          } catch (error) {
+            // If there's an error finding the product, just add the item without population
+            populatedItems.push(item);
+          }
+        }
+        
+        // Replace the items with populated items
+        orderObj.items = populatedItems;
+        populatedOrders.push(orderObj);
+      }
+      
+      console.log(`Found ${orders.length} orders`);
+      
+      res.json({
+        success: true,
+        data: populatedOrders
+      });
+    } catch (error) {
+      console.error("Get orders error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch orders",
+        error: error.message
+      });
+    }
+  },
+
+  // Get Order Details
+  getOrderDetails: async (req, res) => {
+    console.log("Fetching order details...");
+    try {
+      const { orderId } = req.params;
+
+      const order = await Order.findOne({
+        _id: orderId,
+        user: req.user._id,
+      }).populate("deliveryAddress");
+
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+
+      // Manually populate the products
+      const orderObj = order.toObject();
+      const populatedItems = [];
+      
+      for (const item of orderObj.items) {
+        try {
+          // Find the product based on the productType
+          let product = null;
+          if (item.productType === 'buyonce') {
+            const productModel = mongoose.model('Product');
+            product = await productModel.findById(item.product).select('name price image');
+          } else if (item.productType === 'subscription') {
+            const productModel = mongoose.model('Product');
+            product = await productModel.findById(item.product).select('name price image');
+          }
+          
+          // Add the product to the item
+          populatedItems.push({
+            ...item,
+            product: product
+          });
+        } catch (error) {
+          populatedItems.push(item);
+        }
+      }
+      
+      // Replace the items with populated items
+      orderObj.items = populatedItems;
+
+      res.json({
+        success: true,
+        data: orderObj,
+      });
+    } catch (error) {
+      console.error("Get order details error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch order details",
+        error: error.message,
+      });
+    }
+  },
+};
+
+module.exports = orderController;

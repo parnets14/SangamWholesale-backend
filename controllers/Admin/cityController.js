@@ -58,7 +58,7 @@ const createCity = async (req, res) => {
       },
     });
   } catch (error) {
-    if (req.file) fs.unlinkSync(req.file.path); // Cleanup on error
+    if (req.file) fs.unlinkSync(req.file.path);
     console.error("Error creating city:", error);
     res.status(500).json({ success: false, message: "Failed to create city" });
   }
