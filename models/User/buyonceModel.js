@@ -30,7 +30,6 @@ const buyonceSchema = new mongoose.Schema(
           default: "04:00-07:00 AM",
         },
         deliveryDate: {
-          // Remove the duplicate "Date" in the name
           type: Date,
           required: true,
         },
