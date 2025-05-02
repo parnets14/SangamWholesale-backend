@@ -1,30 +1,36 @@
 const mongoose = require("mongoose");
 
-const diccoverSchema = new mongoose.Schema(
+const discoverSchema = new mongoose.Schema(
   {
     title: {
       type: String,
       required: [true, "Please provide a video title"],
       trim: true,
-      maxlength: [100, "Title cannot be more than 100 characters"]
+      maxlength: [100, "Title cannot be more than 100 characters"],
     },
     description: {
       type: String,
       trim: true,
-      maxlength: [1000, "Description cannot be more than 1000 characters"]
+      maxlength: [1000, "Description cannot be more than 1000 characters"],
+    },
+    videoFile: {
+      filename: String,
+      path: String,
+      size: Number,
+      mimetype: String,
     },
     views: {
       type: Number,
-      default: 0
+      default: 0,
     },
     likes: {
       type: Number,
-      default: 0
+      default: 0,
     },
   },
   { timestamps: true }
 );
 
-const Diccover = mongoose.model("Diccover", diccoverSchema);
+const Discover = mongoose.model("Discover", discoverSchema);
 
-module.exports = Diccover;
+module.exports = Discover;

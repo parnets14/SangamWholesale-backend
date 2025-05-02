@@ -1,4 +1,4 @@
-const Diccover = require("../../models/Admin/discoverModel");
+const Discover = require("../../models/Admin/discoverModel");
 const createVideoUploader = require("../../middleware/viddeoMulter");
 const videoUpload = createVideoUploader("discover-videos");
 const path = require("path");
@@ -7,12 +7,18 @@ const fs = require("fs");
 // Get all discover items
 exports.getDiscoverItems = async (req, res) => {
   try {
-    const discoverItems = await Diccover.find().sort({ createdAt: -1 });
+    const discoverItems = await Discover.find().sort({ createdAt: -1 });
+
+    // Modify response to include full video URL
+    const itemsWithVideoUrl = discoverItems.map((item) => ({
+      ...item.toObject(),
+      videoUrl: item.videoFile ? `${item.videoFile.filename}` : null,
+    }));
 
     res.status(200).json({
       success: true,
       count: discoverItems.length,
-      data: discoverItems,
+      data: itemsWithVideoUrl,
     });
   } catch (error) {
     res.status(500).json({
@@ -26,7 +32,7 @@ exports.getDiscoverItems = async (req, res) => {
 // Get a single discover item
 exports.getDiscoverItem = async (req, res) => {
   try {
-    const discoverItem = await Diccover.findById(req.params.id);
+    const discoverItem = await Discover.findById(req.params.id);
 
     if (!discoverItem) {
       return res.status(404).json({
@@ -39,9 +45,17 @@ exports.getDiscoverItem = async (req, res) => {
     discoverItem.views += 1;
     await discoverItem.save();
 
+    // Add video URL to response
+    const responseItem = {
+      ...discoverItem.toObject(),
+      videoUrl: discoverItem.videoFile
+        ? `${discoverItem.videoFile.filename}`
+        : null,
+    };
+
     res.status(200).json({
       success: true,
-      data: discoverItem,
+      data: responseItem,
     });
   } catch (error) {
     res.status(500).json({
@@ -54,7 +68,6 @@ exports.getDiscoverItem = async (req, res) => {
 
 // Create a new discover item with video
 exports.createDiscoverItem = async (req, res) => {
-  // Handle video upload first
   videoUpload.single("video")(req, res, async (err) => {
     if (err) {
       return res.status(400).json({
@@ -63,7 +76,6 @@ exports.createDiscoverItem = async (req, res) => {
       });
     }
 
-    // If no file was uploaded
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -74,24 +86,23 @@ exports.createDiscoverItem = async (req, res) => {
     try {
       const { title, description } = req.body;
 
-      const discoverItem = await Diccover.create({
+      const discoverItem = await Discover.create({
         title,
         description,
         videoFile: {
           filename: req.file.filename,
-          path: req.file.path,
-          size: req.file.size,
-          mimetype: req.file.mimetype,
         },
       });
 
       res.status(201).json({
         success: true,
-        data: discoverItem,
+        data: {
+          ...discoverItem.toObject(),
+          videoUrl: `${req.file.filename}`,
+        },
       });
     } catch (error) {
-      // Delete the uploaded file if there was an error creating the record
-      if (req.file && req.file.path) {
+      if (req.file?.path) {
         fs.unlink(req.file.path, (unlinkErr) => {
           if (unlinkErr) console.error("Error deleting file:", unlinkErr);
         });
@@ -120,41 +131,32 @@ exports.updateDiscoverItem = async (req, res) => {
       const { title, description } = req.body;
       const updateData = { title, description };
 
-      // If a new video was uploaded, add it to the update data
       if (req.file) {
         updateData.videoFile = {
           filename: req.file.filename,
-          path: req.file.path,
-          size: req.file.size,
-          mimetype: req.file.mimetype,
         };
       }
 
-      // Find the existing item first to get the old video path
-      const existingItem = await Diccover.findById(req.params.id);
+      const existingItem = await Discover.findById(req.params.id);
       if (!existingItem) {
-        // Delete the uploaded file if the item doesn't exist
-        if (req.file && req.file.path) {
+        if (req.file?.path) {
           fs.unlink(req.file.path, (unlinkErr) => {
             if (unlinkErr) console.error("Error deleting file:", unlinkErr);
           });
         }
-
         return res.status(404).json({
           success: false,
           message: "Discover item not found",
         });
       }
 
-      // Update the item
-      const discoverItem = await Diccover.findByIdAndUpdate(
+      const discoverItem = await Discover.findByIdAndUpdate(
         req.params.id,
         updateData,
         { new: true, runValidators: true }
       );
 
-      // If a new video was uploaded, delete the old one
-      if (req.file && existingItem.videoFile && existingItem.videoFile.path) {
+      if (req.file && existingItem.videoFile?.path) {
         fs.unlink(existingItem.videoFile.path, (unlinkErr) => {
           if (unlinkErr) console.error("Error deleting old file:", unlinkErr);
         });
@@ -162,11 +164,15 @@ exports.updateDiscoverItem = async (req, res) => {
 
       res.status(200).json({
         success: true,
-        data: discoverItem,
+        data: {
+          ...discoverItem.toObject(),
+          videoUrl: discoverItem.videoFile
+            ? `${discoverItem.videoFile.filename}`
+            : null,
+        },
       });
     } catch (error) {
-      // Delete the uploaded file if there was an error updating the record
-      if (req.file && req.file.path) {
+      if (req.file?.path) {
         fs.unlink(req.file.path, (unlinkErr) => {
           if (unlinkErr) console.error("Error deleting file:", unlinkErr);
         });
@@ -184,7 +190,7 @@ exports.updateDiscoverItem = async (req, res) => {
 // Delete a discover item
 exports.deleteDiscoverItem = async (req, res) => {
   try {
-    const discoverItem = await Diccover.findById(req.params.id);
+    const discoverItem = await Discover.findById(req.params.id);
 
     if (!discoverItem) {
       return res.status(404).json({
@@ -193,15 +199,13 @@ exports.deleteDiscoverItem = async (req, res) => {
       });
     }
 
-    // Delete the associated video file if it exists
-    if (discoverItem.videoFile && discoverItem.videoFile.path) {
+    if (discoverItem.videoFile?.path) {
       fs.unlink(discoverItem.videoFile.path, (unlinkErr) => {
         if (unlinkErr) console.error("Error deleting file:", unlinkErr);
       });
     }
 
-    // Remove the document from the database
-    await Diccover.findByIdAndDelete(req.params.id);
+    await Discover.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
       success: true,
@@ -219,7 +223,7 @@ exports.deleteDiscoverItem = async (req, res) => {
 // Like a discover item
 exports.likeDiscoverItem = async (req, res) => {
   try {
-    const discoverItem = await Diccover.findById(req.params.id);
+    const discoverItem = await Discover.findById(req.params.id);
 
     if (!discoverItem) {
       return res.status(404).json({
