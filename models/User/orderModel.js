@@ -12,7 +12,7 @@ const orderSchema = new mongoose.Schema(
       {
         productType: {
           type: String,
-          enum: ["Product", "Product"],
+          enum: ["buyonce", "subscription"],
           required: true,
         },
         product: {
@@ -68,7 +68,7 @@ const orderSchema = new mongoose.Schema(
         "delivered",
         "cancelled",
       ],
-      default: "pending",
+      default: "confirmed",
     },
     deliverySlot: {
       type: String,

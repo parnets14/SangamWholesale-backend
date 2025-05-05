@@ -5,13 +5,6 @@ const Subscription = require("../../models/User/subscriptionModel");
 const Address = require("../../models/User/addressModel");
 const Wallet = require("../../models/User/walletModel");
 
-// Make sure the model names match what's in your refPath
-// This registers aliases for your models
-
-
-// Make sure your models are registered correctly
-
-
 const orderController = {
   // Place Order
   confirmOrder: async (req, res) => {
@@ -27,48 +20,54 @@ const orderController = {
       });
 
       // 1. Get cart items from Buyonce and Subscription models (like in cartController)
-      const buyonceOrders = await Buyonce.find({ 
+      const buyonceOrders = await Buyonce.find({
         user: userId,
-        'order.status': 'upcoming' // Only include pending/upcoming items
+        "order.status": "upcoming", // Only include pending/upcoming items
       }).populate({
-        path: 'order.productId',
-        select: 'name price images'
+        path: "order.productId",
+        select: "name price images",
       });
 
-      const subscriptions = await Subscription.find({ 
+      const subscriptions = await Subscription.find({
         user: userId,
-        'Subscriptions.status': 'upcoming' // Only include pending/upcoming items
+        "Subscriptions.status": "upcoming", // Only include pending/upcoming items
       }).populate({
-        path: 'Subscriptions.product',
-        select: 'name price images'
+        path: "Subscriptions.product",
+        select: "name price images",
       });
 
       // Check if cart is empty
-      const buyonceItemsCount = buyonceOrders.reduce((count, order) => count + order.order.length, 0);
-      const subscriptionItemsCount = subscriptions.reduce((count, sub) => count + sub.Subscriptions.length, 0);
-      
+      const buyonceItemsCount = buyonceOrders.reduce(
+        (count, order) => count + order.order.length,
+        0
+      );
+      const subscriptionItemsCount = subscriptions.reduce(
+        (count, sub) => count + sub.Subscriptions.length,
+        0
+      );
+
       if (buyonceItemsCount === 0 && subscriptionItemsCount === 0) {
         return res.status(400).json({
           success: false,
-          message: "Your cart is empty"
+          message: "Your cart is empty",
         });
       }
 
       console.log("Cart items found:", {
         buyonceItems: buyonceItemsCount,
-        subscriptionItems: subscriptionItemsCount
+        subscriptionItems: subscriptionItemsCount,
       });
 
       // 2. Validate address
       const address = await Address.findOne({
         _id: addressId,
-        user: userId
+        user: userId,
       });
 
       if (!address) {
         return res.status(400).json({
           success: false,
-          message: "Invalid delivery address"
+          message: "Invalid delivery address",
         });
       }
 
@@ -78,36 +77,36 @@ const orderController = {
       const orderItems = [];
 
       // Process buyonce items
-      buyonceOrders.forEach(order => {
-        order.order.forEach(item => {
-          if (item.status === 'upcoming') {
+      buyonceOrders.forEach((order) => {
+        order.order.forEach((item) => {
+          if (item.status === "upcoming") {
             const itemPrice = item.productId.price;
             const itemTotal = itemPrice * item.quantity;
             totalAmount += itemTotal;
 
             orderItems.push({
-              productType: 'buyonce',
+              productType: "buyonce",
               product: item.productId._id,
               quantity: item.quantity,
-              price: itemPrice
+              price: itemPrice,
             });
           }
         });
       });
 
       // Process subscription items
-      subscriptions.forEach(sub => {
-        sub.Subscriptions.forEach(item => {
-          if (item.status === 'upcoming') {
+      subscriptions.forEach((sub) => {
+        sub.Subscriptions.forEach((item) => {
+          if (item.status === "upcoming") {
             const itemPrice = item.product.price;
             const itemTotal = itemPrice * item.quantity;
             totalAmount += itemTotal;
 
             orderItems.push({
-              productType: 'subscription',
+              productType: "subscription",
               product: item.product._id,
               quantity: item.quantity,
-              price: itemPrice
+              price: itemPrice,
             });
           }
         });
@@ -121,7 +120,7 @@ const orderController = {
         totalAmount,
         discount,
         finalAmount,
-        itemCount: orderItems.length
+        itemCount: orderItems.length,
       });
 
       // 4. Handle wallet payment if selected
@@ -132,7 +131,7 @@ const orderController = {
         if (!wallet || wallet.balance < finalAmount) {
           return res.status(400).json({
             success: false,
-            message: "Insufficient wallet balance"
+            message: "Insufficient wallet balance",
           });
         }
 
@@ -154,33 +153,59 @@ const orderController = {
         paymentMethod,
         paymentStatus: paymentMethod === "wallet" ? "completed" : "pending",
         deliverySlot: "morning", // Default value or get from request
-        deliveryDate: new Date(Date.now() + (24 * 60 * 60 * 1000)) // Tomorrow or get from request
+        deliveryDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow or get from request
       });
 
       console.log("Order created:", {
         orderId: order._id,
-        status: order.orderStatus
+        status: order.orderStatus,
       });
 
-      // 6. Mark items as ordered in original models
-      // Update buyonce items status
+      // 6. Remove ordered items from original models
+      console.log("Removing items from cart...");
+      // Remove buyonce items
       for (const buyonceOrder of buyonceOrders) {
-        for (const item of buyonceOrder.order) {
-          if (item.status === 'upcoming') {
-            item.status = 'onhold';
+        const orderItemIds = buyonceOrder.order
+          .filter((item) => item.status === "upcoming")
+          .map((item) => item._id);
+
+        if (orderItemIds.length > 0) {
+          await Buyonce.updateOne(
+            { _id: buyonceOrder._id },
+            { $pull: { order: { _id: { $in: orderItemIds } } } }
+          );
+
+          // If no items left, delete the entire document
+          const updatedOrder = await Buyonce.findById(buyonceOrder._id);
+          if (updatedOrder && updatedOrder.order.length === 0) {
+            await Buyonce.findByIdAndDelete(buyonceOrder._id);
           }
         }
-        await buyonceOrder.save();
       }
 
-      // Update subscription items status
+      // Remove subscription items
       for (const subscription of subscriptions) {
-        for (const item of subscription.Subscriptions) {
-          if (item.status === 'upcoming') {
-            item.status = 'onhold';
+        const subscriptionItemIds = subscription.Subscriptions.filter(
+          (item) => item.status === "upcoming"
+        ).map((item) => item._id);
+
+        if (subscriptionItemIds.length > 0) {
+          await Subscription.updateOne(
+            { _id: subscription._id },
+            { $pull: { Subscriptions: { _id: { $in: subscriptionItemIds } } } }
+          );
+
+          // If no items left, delete the entire document
+          const updatedSubscription = await Subscription.findById(
+            subscription._id
+          );
+          if (
+            updatedSubscription &&
+            updatedSubscription.Subscriptions.length === 0
+          ) {
+            await Subscription.findByIdAndDelete(subscription._id);
           }
         }
-        await subscription.save();
       }
 
       res.status(201).json({
@@ -193,15 +218,15 @@ const orderController = {
           finalAmount,
           paymentMethod,
           paymentStatus: order.paymentStatus,
-          orderStatus: order.orderStatus
-        }
+          orderStatus: order.orderStatus,
+        },
       });
     } catch (error) {
       console.error("Order confirmation error:", error);
       res.status(500).json({
         success: false,
         message: "Failed to place order",
-        error: error.message
+        error: error.message,
       });
     }
   },
@@ -214,56 +239,60 @@ const orderController = {
       const orders = await Order.find({ user: req.user._id })
         .populate("deliveryAddress")
         .sort({ createdAt: -1 });
-      
+
       // Manually handle the population of products
       const populatedOrders = [];
-      
+
       for (const order of orders) {
         const orderObj = order.toObject();
         const populatedItems = [];
-        
+
         for (const item of orderObj.items) {
           try {
             // Find the product based on the productType
             let product = null;
-            if (item.productType === 'buyonce') {
+            if (item.productType === "buyonce") {
               // Use the Product model to find buyonce products
-              const productModel = mongoose.model('Product');
-              product = await productModel.findById(item.product).select('name price image');
-            } else if (item.productType === 'subscription') {
+              const productModel = mongoose.model("Product");
+              product = await productModel
+                .findById(item.product)
+                .select("name price image");
+            } else if (item.productType === "subscription") {
               // Also use the Product model for subscription products (adjust if needed)
-              const productModel = mongoose.model('Product');
-              product = await productModel.findById(item.product).select('name price image');
+              const productModel = mongoose.model("Product");
+              product = await productModel
+                .findById(item.product)
+                .select("name price image");
             }
-            
+
             // Add the product to the item
             populatedItems.push({
               ...item,
-              product: product
+              product: product,
             });
           } catch (error) {
             // If there's an error finding the product, just add the item without population
             populatedItems.push(item);
           }
         }
-        
+
         // Replace the items with populated items
         orderObj.items = populatedItems;
         populatedOrders.push(orderObj);
       }
-      
+
       console.log(`Found ${orders.length} orders`);
-      
+
       res.json({
         success: true,
-        data: populatedOrders
+        data: populatedOrders,
       });
     } catch (error) {
       console.error("Get orders error:", error);
       res.status(500).json({
         success: false,
         message: "Failed to fetch orders",
-        error: error.message
+        error: error.message,
       });
     }
   },
@@ -289,29 +318,33 @@ const orderController = {
       // Manually populate the products
       const orderObj = order.toObject();
       const populatedItems = [];
-      
+
       for (const item of orderObj.items) {
         try {
           // Find the product based on the productType
           let product = null;
-          if (item.productType === 'buyonce') {
-            const productModel = mongoose.model('Product');
-            product = await productModel.findById(item.product).select('name price image');
-          } else if (item.productType === 'subscription') {
-            const productModel = mongoose.model('Product');
-            product = await productModel.findById(item.product).select('name price image');
+          if (item.productType === "buyonce") {
+            const productModel = mongoose.model("Product");
+            product = await productModel
+              .findById(item.product)
+              .select("name price image");
+          } else if (item.productType === "subscription") {
+            const productModel = mongoose.model("Product");
+            product = await productModel
+              .findById(item.product)
+              .select("name price image");
           }
-          
+
           // Add the product to the item
           populatedItems.push({
             ...item,
-            product: product
+            product: product,
           });
         } catch (error) {
           populatedItems.push(item);
         }
       }
-      
+
       // Replace the items with populated items
       orderObj.items = populatedItems;
 
