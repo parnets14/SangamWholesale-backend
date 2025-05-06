@@ -25,15 +25,15 @@ const orderController = {
         "order.status": "upcoming", // Only include pending/upcoming items
       }).populate({
         path: "order.productId",
-        select: "name price images",
+        select: "name price image",
       });
 
       const subscriptions = await Subscription.find({
-        user: userId,
+        userId: userId,
         "Subscriptions.status": "upcoming", // Only include pending/upcoming items
       }).populate({
-        path: "Subscriptions.product",
-        select: "name price images",
+        path: "Subscriptions.productId",
+        select: "name price image",
       });
 
       // Check if cart is empty
@@ -98,13 +98,13 @@ const orderController = {
       subscriptions.forEach((sub) => {
         sub.Subscriptions.forEach((item) => {
           if (item.status === "upcoming") {
-            const itemPrice = item.product.price;
+            const itemPrice = item.productId.price;
             const itemTotal = itemPrice * item.quantity;
             totalAmount += itemTotal;
 
             orderItems.push({
               productType: "subscription",
-              product: item.product._id,
+              product: item.productId._id,
               quantity: item.quantity,
               price: itemPrice,
             });

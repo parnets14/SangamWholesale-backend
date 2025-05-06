@@ -1,57 +1,49 @@
 const Vacation = require("../../models/User/vacationModel");
-const { isValidObjectId } = require("mongoose");
 
-// Create vacation
+// 1. Create Vacation (only userId)
 exports.createVacation = async (req, res) => {
   try {
-    const { userId, orderId, startDate, endDate } = req.body;
+    const { userId, startDate, endDate } = req.body;
 
-    // Basic validation
-    if (!userId || !orderId || !startDate || !endDate) {
+    if (!userId || !startDate || !endDate) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
     if (new Date(endDate) <= new Date(startDate)) {
-      return res.status(400).json({ error: "End date must be after start date" });
+      return res
+        .status(400)
+        .json({ error: "End date must be after start date" });
     }
 
-    const vacation = await Vacation.create({
-      userId,
-      orderId,
-      startDate,
-      endDate
-    });
-
+    const vacation = await Vacation.create({ userId, startDate, endDate });
     res.status(201).json(vacation);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Get all vacations
+// 2. Get All Vacations (for a user)
 exports.getAllVacations = async (req, res) => {
   try {
-    const vacations = await Vacation.find()
-      .populate("userId", "name email")
-      .populate("orderId", "status");
-    res.json(vacations);
+    const { userId } = req.query; // Get via query param: /vacations?userId=123
+
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+
+    const vacations = await Vacation.find({ userId }).sort({ startDate: 1 }); // Sort by start date (ascending)
+
+    res.json({ count: vacations.length, vacations });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Get single vacation
+// 3. Get Single Vacation
 exports.getVacation = async (req, res) => {
   try {
     const { id } = req.params;
-    
-    if (!isValidObjectId(id)) {
-      return res.status(400).json({ error: "Invalid vacation ID" });
-    }
-
-    const vacation = await Vacation.findById(id)
-      .populate("userId", "name email")
-      .populate("orderId", "status");
+    const vacation = await Vacation.findById(id);
 
     if (!vacation) {
       return res.status(404).json({ error: "Vacation not found" });
@@ -63,24 +55,22 @@ exports.getVacation = async (req, res) => {
   }
 };
 
-// Update vacation
+// 4. Update Vacation
 exports.updateVacation = async (req, res) => {
   try {
     const { id } = req.params;
     const { startDate, endDate } = req.body;
 
-    if (!isValidObjectId(id)) {
-      return res.status(400).json({ error: "Invalid vacation ID" });
-    }
-
     if (endDate && startDate && new Date(endDate) <= new Date(startDate)) {
-      return res.status(400).json({ error: "End date must be after start date" });
+      return res
+        .status(400)
+        .json({ error: "End date must be after start date" });
     }
 
     const vacation = await Vacation.findByIdAndUpdate(
       id,
       { startDate, endDate },
-      { new: true, runValidators: true }
+      { new: true } // Return updated document
     );
 
     if (!vacation) {
@@ -93,15 +83,10 @@ exports.updateVacation = async (req, res) => {
   }
 };
 
-// Delete vacation
+// 5. Delete Vacation
 exports.deleteVacation = async (req, res) => {
   try {
     const { id } = req.params;
-
-    if (!isValidObjectId(id)) {
-      return res.status(400).json({ error: "Invalid vacation ID" });
-    }
-
     const vacation = await Vacation.findByIdAndDelete(id);
 
     if (!vacation) {

@@ -153,36 +153,48 @@ const getProfile = async (req, res) => {
 // Update profile
 const updateProfile = async (req, res) => {
   try {
-    const { name, email } = req.body;
+    const { name, email, gender, dateOfBirth, familyMembers } = req.body;
 
     const updateData = {};
     if (name) updateData.name = name;
     if (email) updateData.email = email;
+    if (gender) updateData.gender = gender;
+    if (dateOfBirth) updateData.dateOfBirth = dateOfBirth;
+
+    // Handle family members count
+    if (familyMembers && familyMembers.count !== undefined) {
+      updateData.familyMembers = {
+        count: Math.max(0, Math.min(familyMembers.count, 20)), // Enforcing min 0 and max 20
+      };
+    }
 
     const user = await User.findByIdAndUpdate(
       req.user._id,
       { $set: updateData },
       { new: true }
-    ).select("-otp -otpExpiry");
+    ).select("-otp -otpExpiry -__v");
 
-    if (!user)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
 
     res.status(200).json({
       success: true,
       message: "Profile updated successfully",
-      user,
+      data: user,
     });
   } catch (error) {
-    console.error("updateProfile error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Server error while updating profile" });
+    console.error("Update profile error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while updating profile",
+      error: error.message,
+    });
   }
 };
-
 // Get all users (admin only)
 const getAllProfiles = async (req, res) => {
   try {

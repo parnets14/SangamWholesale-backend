@@ -1,6 +1,5 @@
-const Buyonce = require('../../models/User/buyonceModel');
-const Subscription = require('../../models/User/subscriptionModel');
-
+const Buyonce = require("../../models/User/buyonceModel");
+const Subscription = require("../../models/User/subscriptionModel");
 
 // Get user's combined cart (existing orders + subscriptions)
 const getCombinedCart = async (req, res) => {
@@ -10,52 +9,53 @@ const getCombinedCart = async (req, res) => {
     // Get all buyonce orders
     const buyonceOrders = await Buyonce.find({ user: userId })
       .populate({
-        path: 'order.productId',
-        select: 'name price images'
+        path: "order.productId",
+        select: "name price image",
       })
-      .populate('order.address');
+      .populate("order.address");
 
     // Get all subscriptions
-    const subscriptions = await Subscription.find({ user: userId })
+    const subscriptions = await Subscription.find({ userId: userId })
       .populate({
-        path: 'Subscriptions.product',
-        select: 'name price images'
+        path: "Subscriptions.productId",
+        select: "name price image",
       })
-      .populate('Subscriptions.address');
+      .populate("Subscriptions.addressId");
 
     // Transform data into cart-like format
     const cartItems = [];
-    
+
     // Process buyonce orders
-    buyonceOrders.forEach(order => {
-      order.order.forEach(item => {
+    buyonceOrders.forEach((order) => {
+      order.order.forEach((item) => {
         cartItems.push({
-          type: 'buyonce',
+          type: "buyonce",
           id: item._id,
           product: item.productId,
           quantity: item.quantity,
           status: item.status,
           deliveryDate: item.deliveryDate,
           address: item.address,
-          createdAt: order.createdAt
+          createdAt: order.createdAt,
         });
       });
     });
 
     // Process subscriptions
-    subscriptions.forEach(sub => {
-      sub.Subscriptions.forEach(item => {
+    subscriptions.forEach((sub) => {
+      sub.Subscriptions.forEach((item) => {
         cartItems.push({
-          type: 'subscription',
+          type: "subscription",
           id: item._id,
-          product: item.product,
+          product: item.productId,
           quantity: item.quantity,
           status: item.status,
           frequency: item.frequency,
+          deliveryDate: item.deliveryDate,
           startDate: item.startDate,
           endDate: item.endDate,
-          address: item.address,
-          createdAt: sub.createdAt
+          addressId: item.addressId,
+          createdAt: sub.createdAt,
         });
       });
     });
@@ -66,13 +66,12 @@ const getCombinedCart = async (req, res) => {
     res.status(200).json({
       success: true,
       count: cartItems.length,
-      items: cartItems
+      items: cartItems,
     });
-
   } catch (error) {
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: error.message 
+      error: error.message,
     });
   }
 };
@@ -82,28 +81,28 @@ const findOrderByItemId = async (userId, itemId) => {
   // Check in BuyOnce orders
   let buyonceOrder = await Buyonce.findOne({
     user: userId,
-    'order._id': itemId
+    "order._id": itemId,
   });
 
   if (buyonceOrder) {
     return {
-      type: 'buyonce',
+      type: "buyonce",
       order: buyonceOrder,
-      item: buyonceOrder.order.id(itemId)
+      item: buyonceOrder.order.id(itemId),
     };
   }
 
   // Check in Subscriptions
   let subscription = await Subscription.findOne({
     user: userId,
-    'Subscriptions._id': itemId
+    "Subscriptions._id": itemId,
   });
 
   if (subscription) {
     return {
-      type: 'subscription',
+      type: "subscription",
       order: subscription,
-      item: subscription.Subscriptions.id(itemId)
+      item: subscription.Subscriptions.id(itemId),
     };
   }
 
@@ -120,7 +119,7 @@ const updateCartItem = async (req, res) => {
     // Find the order containing this item
     const orderInfo = await findOrderByItemId(userId, itemId);
     if (!orderInfo) {
-      return res.status(404).json({ error: 'Item not found in your orders' });
+      return res.status(404).json({ error: "Item not found in your orders" });
     }
 
     // Apply updates
@@ -131,16 +130,16 @@ const updateCartItem = async (req, res) => {
     if (updates.address) {
       const address = await Address.findOne({
         _id: updates.address,
-        user: userId
+        user: userId,
       });
       if (!address) {
-        return res.status(404).json({ error: 'Address not found' });
+        return res.status(404).json({ error: "Address not found" });
       }
       orderInfo.item.address = updates.address;
     }
 
     // For subscriptions - update frequency/dates
-    if (orderInfo.type === 'subscription') {
+    if (orderInfo.type === "subscription") {
       if (updates.frequency) {
         orderInfo.item.frequency = updates.frequency;
       }
@@ -155,10 +154,9 @@ const updateCartItem = async (req, res) => {
     await orderInfo.order.save();
     res.status(200).json({
       success: true,
-      message: 'Item updated successfully',
-      item: orderInfo.item
+      message: "Item updated successfully",
+      item: orderInfo.item,
     });
-
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -174,10 +172,10 @@ const removeFromCart = async (req, res) => {
     const buyonceUpdate = await Buyonce.findOneAndUpdate(
       {
         user: userId,
-        'order._id': itemId
+        "order._id": itemId,
       },
       {
-        $pull: { order: { _id: itemId } }
+        $pull: { order: { _id: itemId } },
       },
       { new: true }
     );
@@ -187,9 +185,9 @@ const removeFromCart = async (req, res) => {
       if (buyonceUpdate.order.length === 0) {
         await Buyonce.findByIdAndDelete(buyonceUpdate._id);
       }
-      return res.status(200).json({ 
+      return res.status(200).json({
         success: true,
-        message: 'BuyOnce item removed successfully' 
+        message: "BuyOnce item removed successfully",
       });
     }
 
@@ -197,10 +195,10 @@ const removeFromCart = async (req, res) => {
     const subscriptionUpdate = await Subscription.findOneAndUpdate(
       {
         user: userId,
-        'Subscriptions._id': itemId
+        "Subscriptions._id": itemId,
       },
       {
-        $pull: { Subscriptions: { _id: itemId } }
+        $pull: { Subscriptions: { _id: itemId } },
       },
       { new: true }
     );
@@ -210,13 +208,13 @@ const removeFromCart = async (req, res) => {
       if (subscriptionUpdate.Subscriptions.length === 0) {
         await Subscription.findByIdAndDelete(subscriptionUpdate._id);
       }
-      return res.status(200).json({ 
+      return res.status(200).json({
         success: true,
-        message: 'Subscription item removed successfully' 
+        message: "Subscription item removed successfully",
       });
     }
 
-    res.status(404).json({ error: 'Item not found in your orders' });
+    res.status(404).json({ error: "Item not found in your orders" });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -232,22 +230,21 @@ const applyCoupon = async (req, res) => {
     // 1. Validate the coupon code
     // 2. Calculate discount amount
     // 3. Apply to relevant orders
-    
+
     // This is a simplified version
     const discount = 10; // Example: 10% discount
-    
+
     // For demonstration, we'll just return the discount info
     res.status(200).json({
       success: true,
       message: `Coupon applied: ${couponCode}`,
       discount: {
         percentage: discount,
-        code: couponCode
+        code: couponCode,
       },
       // In real implementation, you would update orders with discount
-      ordersUpdated: [] 
+      ordersUpdated: [],
     });
-
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -260,30 +257,27 @@ const clearCart = async (req, res) => {
 
     // Delete all BuyOnce orders
     await Buyonce.deleteMany({ user: userId });
-    
+
     // Delete all Subscriptions
     await Subscription.deleteMany({ user: userId });
 
     res.status(200).json({
       success: true,
-      message: 'All your orders have been cleared',
+      message: "All your orders have been cleared",
       deletedCount: {
-        buyonce: (await Buyonce.countDocuments({ user: userId })),
-        subscriptions: (await Subscription.countDocuments({ user: userId }))
-      }
+        buyonce: await Buyonce.countDocuments({ user: userId }),
+        subscriptions: await Subscription.countDocuments({ user: userId }),
+      },
     });
-
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };
-
-
 
 module.exports = {
   getCombinedCart,
   updateCartItem,
   removeFromCart,
   applyCoupon,
-  clearCart
+  clearCart,
 };

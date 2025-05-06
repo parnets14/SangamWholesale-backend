@@ -7,11 +7,6 @@ const vacationSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    orderId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "order",
-      required: true,
-    },
     startDate: {
       type: Date,
       required: true,
@@ -24,6 +19,4 @@ const vacationSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-
-const Vacation = mongoose.model("Vacation", vacationSchema);
-module.exports = Vacation;
+module.exports = mongoose.model("Vacation", vacationSchema);

@@ -1,41 +1,38 @@
 const express = require("express");
 const router = express.Router();
-const subscriptionController = require("../../controllers/User/subscriptionController");
+const {
+  createSubscription,
+  getUserSubscriptions,
+  getSubscriptionById,
+  deleteSubscription,
+  getActiveSubscriptions,
+  updateSubscription,
+  updateSubscriptionItemStatus,
+  getAllSubscriptions,
+} = require("../../controllers/User/subscriptionController");
 const { userProtect, adminProtect } = require("../../middleware/Middleware");
 
 // User routes
-router.post("/", userProtect, subscriptionController.createSubscription);
-router.get("/", userProtect, subscriptionController.getUserSubscriptions);
-router.get(
-  "/user/:userId",
-  userProtect,
-  subscriptionController.getUserSubscriptions
-);
-router.get(
-  "/active/:userId",
-  userProtect,
-  subscriptionController.getActiveSubscriptions
-);
+router.post("/", userProtect, createSubscription);
+router.get("/", userProtect, getUserSubscriptions);
+router.get("/user/:userId", userProtect, getUserSubscriptions);
+router.get("/active/:userId", userProtect, getActiveSubscriptions);
 
 // Single subscription operations
 router
   .route("/:subscriptionId")
-  .get(userProtect, subscriptionController.getSubscriptionById)
-  .put(userProtect, subscriptionController.updateSubscription)
-  .delete(userProtect, subscriptionController.deleteSubscription);
+  .get(userProtect, getSubscriptionById)
+  .put(userProtect, updateSubscription)
+  .delete(userProtect, deleteSubscription);
 
 // Subscription item status update
 router.patch(
   "/:subscriptionId/items/:itemId/status",
   userProtect,
-  subscriptionController.updateSubscriptionItemStatus
+  updateSubscriptionItemStatus
 );
 
 // Admin routes
-router.get(
-  "/admin/all",
-  adminProtect,
-  subscriptionController.getAllSubscriptions
-);
+router.get("/admin/all", adminProtect, getAllSubscriptions);
 
 module.exports = router;

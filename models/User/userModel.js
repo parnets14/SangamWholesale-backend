@@ -16,6 +16,21 @@ const userSchema = mongoose.Schema(
       required: true,
       unique: true,
     },
+    gender: {
+      type: String,
+      enum: ["male", "female", "other"],
+      required: false,
+    },
+    dateOfBirth: {
+      type: Date,
+      required: false,
+    },
+    familyMembers: {
+      count: {
+        type: Number,
+        default: 1,
+      },
+    },
     isProfileComplete: {
       type: Boolean,
       default: false,
@@ -36,5 +51,5 @@ const userSchema = mongoose.Schema(
   }
 );
 
-const userModel = mongoose.model("User", userSchema);
-module.exports = userModel;
+const User = mongoose.model("User", userSchema);
+module.exports = User;

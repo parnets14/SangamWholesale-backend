@@ -6,10 +6,10 @@ const Address = require("../../models/User/addressModel");
 // Create a new subscription
 const createSubscription = async (req, res) => {
   try {
-    const { user, Subscriptions } = req.body;
+    const { userId, Subscriptions, totalAmount } = req.body;
 
     // Validate user exists
-    const userExists = await User.findById(user);
+    const userExists = await User.findById(userId);
     if (!userExists) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -17,19 +17,19 @@ const createSubscription = async (req, res) => {
     // Validate each subscription item
     for (const sub of Subscriptions) {
       // Validate product exists
-      const product = await Product.findById(sub.product);
+      const product = await Product.findById(sub.productId);
       if (!product) {
         return res
           .status(404)
-          .json({ error: `Product ${sub.product} not found` });
+          .json({ error: `Product ${sub.productId} not found` });
       }
 
       // Validate address exists
-      const address = await Address.findById(sub.address);
+      const address = await Address.findById(sub.addressId);
       if (!address) {
         return res
           .status(404)
-          .json({ error: `Address ${sub.address} not found` });
+          .json({ error: `Address ${sub.addressId} not found` });
       }
 
       // Validate dates
@@ -40,25 +40,38 @@ const createSubscription = async (req, res) => {
       }
 
       // Validate frequency-specific fields
-      if (
-        sub.frequency === "custom" &&
-        (!sub.customDays || sub.customDays.length === 0)
-      ) {
-        return res
-          .status(400)
-          .json({ error: "Custom days required for custom frequency" });
+      if (sub.frequency === "Custom") {
+        const hasDayWithQuantity = Object.values(sub.days || {}).some(
+          (day) => day.quantity > 0
+        );
+        if (!hasDayWithQuantity) {
+          return res.status(400).json({
+            error:
+              "At least one day must be selected with quantity for custom frequency",
+          });
+        }
       }
 
-      if (sub.frequency === "interval" && !sub.intervalDays) {
-        return res
-          .status(400)
-          .json({ error: "Interval days required for interval frequency" });
+      if (sub.frequency === "On Interval" && !sub.repeatInterval) {
+        return res.status(400).json({
+          error: "Repeat interval required for interval frequency",
+        });
+      }
+
+      if (sub.frequency === "Every Day" && !sub.deliveryDate) {
+        return res.status(400).json({
+          error: "Delivery date required for daily frequency",
+        });
       }
     }
 
-    const subscription = new Subscription({ user, Subscriptions });
-    await subscription.save();
+    const subscription = new Subscription({
+      userId,
+      Subscriptions,
+      totalAmount,
+    });
 
+    await subscription.save();
     res.status(201).json(subscription);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -69,9 +82,9 @@ const createSubscription = async (req, res) => {
 const getAllSubscriptions = async (req, res) => {
   try {
     const subscriptions = await Subscription.find()
-      .populate("user", "name email")
-      .populate("Subscriptions.product", "name price")
-      .populate("Subscriptions.address");
+      .populate("userId", "name email")
+      .populate("Subscriptions.productId", "name price")
+      .populate("Subscriptions.addressId");
 
     res.status(200).json(subscriptions);
   } catch (error) {
@@ -83,10 +96,9 @@ const getAllSubscriptions = async (req, res) => {
 const getUserSubscriptions = async (req, res) => {
   try {
     const userId = req.params.userId;
-
-    const subscriptions = await Subscription.find({ user: userId })
-      .populate("Subscriptions.product", "name price image")
-      .populate("Subscriptions.address");
+    const subscriptions = await Subscription.find({ userId })
+      .populate("Subscriptions.productId", "name price image")
+      .populate("Subscriptions.addressId");
 
     if (!subscriptions || subscriptions.length === 0) {
       return res
@@ -104,11 +116,10 @@ const getUserSubscriptions = async (req, res) => {
 const getSubscriptionById = async (req, res) => {
   try {
     const subscriptionId = req.params.subscriptionId;
-
     const subscription = await Subscription.findById(subscriptionId)
-      .populate("user", "name email")
-      .populate("Subscriptions.product", "name price description")
-      .populate("Subscriptions.address");
+      .populate("userId", "name email")
+      .populate("Subscriptions.productId", "name price description")
+      .populate("Subscriptions.addressId");
 
     if (!subscription) {
       return res.status(404).json({ error: "Subscription not found" });
@@ -126,7 +137,6 @@ const updateSubscription = async (req, res) => {
     const subscriptionId = req.params.subscriptionId;
     const updates = req.body;
 
-    // Validate if subscription exists
     const existingSubscription = await Subscription.findById(subscriptionId);
     if (!existingSubscription) {
       return res.status(404).json({ error: "Subscription not found" });
@@ -135,21 +145,21 @@ const updateSubscription = async (req, res) => {
     // Validate updates if provided
     if (updates.Subscriptions) {
       for (const sub of updates.Subscriptions) {
-        if (sub.product) {
-          const product = await Product.findById(sub.product);
+        if (sub.productId) {
+          const product = await Product.findById(sub.productId);
           if (!product) {
             return res
               .status(404)
-              .json({ error: `Product ${sub.product} not found` });
+              .json({ error: `Product ${sub.productId} not found` });
           }
         }
 
-        if (sub.address) {
-          const address = await Address.findById(sub.address);
+        if (sub.addressId) {
+          const address = await Address.findById(sub.addressId);
           if (!address) {
             return res
               .status(404)
-              .json({ error: `Address ${sub.address} not found` });
+              .json({ error: `Address ${sub.addressId} not found` });
           }
         }
 
@@ -170,9 +180,9 @@ const updateSubscription = async (req, res) => {
       updates,
       { new: true, runValidators: true }
     )
-      .populate("user", "name email")
-      .populate("Subscriptions.product", "name price")
-      .populate("Subscriptions.address");
+      .populate("userId", "name email")
+      .populate("Subscriptions.productId", "name price")
+      .populate("Subscriptions.addressId");
 
     res.status(200).json(updatedSubscription);
   } catch (error) {
@@ -180,7 +190,7 @@ const updateSubscription = async (req, res) => {
   }
 };
 
-// Update status of a specific subscription item
+// Update subscription item status
 const updateSubscriptionItemStatus = async (req, res) => {
   try {
     const { subscriptionId, itemId } = req.params;
@@ -199,14 +209,12 @@ const updateSubscriptionItemStatus = async (req, res) => {
       return res.status(404).json({ error: "Subscription not found" });
     }
 
-    const itemIndex = subscription.Subscriptions.findIndex(
-      (item) => item._id.toString() === itemId
-    );
-    if (itemIndex === -1) {
+    const item = subscription.Subscriptions.id(itemId);
+    if (!item) {
       return res.status(404).json({ error: "Subscription item not found" });
     }
 
-    subscription.Subscriptions[itemIndex].status = status;
+    item.status = status;
     await subscription.save();
 
     res.status(200).json(subscription);
@@ -219,7 +227,6 @@ const updateSubscriptionItemStatus = async (req, res) => {
 const deleteSubscription = async (req, res) => {
   try {
     const subscriptionId = req.params.subscriptionId;
-
     const deletedSubscription = await Subscription.findByIdAndDelete(
       subscriptionId
     );
@@ -242,22 +249,24 @@ const getActiveSubscriptions = async (req, res) => {
     today.setHours(0, 0, 0, 0);
 
     const subscriptions = await Subscription.find({
-      user: userId,
+      userId,
       "Subscriptions.endDate": { $gte: today },
+      "Subscriptions.status": { $ne: "cancelled" },
     })
-      .populate("Subscriptions.product", "name price image")
-      .populate("Subscriptions.address");
+      .populate("Subscriptions.productId", "name price image")
+      .populate("Subscriptions.addressId");
 
     if (!subscriptions || subscriptions.length === 0) {
       return res.status(404).json({ message: "No active subscriptions found" });
     }
 
-    // Filter only active subscription items
+    // Filter only active items
     const result = subscriptions
       .map((sub) => ({
         ...sub.toObject(),
         Subscriptions: sub.Subscriptions.filter(
-          (item) => new Date(item.endDate) >= today
+          (item) =>
+            new Date(item.endDate) >= today && item.status !== "cancelled"
         ),
       }))
       .filter((sub) => sub.Subscriptions.length > 0);
