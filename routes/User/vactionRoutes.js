@@ -7,7 +7,7 @@ const {
   deleteVacation,
 } = require("../../controllers/User/vacationController");
 
-// CRUD Routes
+// Routes
 router.post("/", createVacation);
 router.get("/:id", getVacation);
 router.put("/:id", updateVacation);
