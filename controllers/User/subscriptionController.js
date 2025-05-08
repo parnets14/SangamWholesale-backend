@@ -58,10 +58,16 @@ const createSubscription = async (req, res) => {
         });
       }
 
-      if (sub.frequency === "Every Day" && !sub.deliveryDate) {
-        return res.status(400).json({
-          error: "Delivery date required for daily frequency",
-        });
+      // Frequency-specific validation
+      if (sub.frequency === "Every Day") {
+        if (!sub.deliveryDate) {
+          return res.status(400).json({
+            error: "Delivery date is required for daily frequency",
+          });
+        }
+        // Remove unnecessary fields for "Every Day" frequency
+        delete sub.startDate;
+        delete sub.endDate;
       }
     }
 
