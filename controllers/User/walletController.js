@@ -50,9 +50,14 @@ const addToWallet = async (req, res) => {
       });
     }
 
-    await wallet.save({ session });
+    const updatedWallet = await wallet.save({ session });
     await session.commitTransaction();
-    res.status(200).json(wallet);
+
+    // Return the updated wallet with newBalance
+    res.status(200).json({
+      newBalance: updatedWallet.balance,
+      wallet: updatedWallet,
+    });
   } catch (error) {
     await session.abortTransaction();
     res.status(400).json({ error: error.message });
