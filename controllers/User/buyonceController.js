@@ -63,7 +63,7 @@ const getUpcomingBuyonceOrders = async (req, res) => {
     if (!orders || orders.length === 0) {
       return res.status(404).json({ message: "No upcoming orders found" });
     }
-
+    console.log("orders", orders);
     const result = orders
       .map((order) => ({
         ...order.toObject(),

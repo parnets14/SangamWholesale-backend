@@ -5,6 +5,7 @@ exports.createAddress = async (req, res) => {
   try {
     const userId = req.user._id;
     const addressData = { ...req.body, user: userId };
+    console.log("addressData", addressData);
 
     // If setting as default, ensure no other default exists
     if (addressData.isDefault) {

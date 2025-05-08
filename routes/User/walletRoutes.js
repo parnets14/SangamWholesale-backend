@@ -4,6 +4,6 @@ const walletController = require("../../controllers/User/walletController");
 const { userProtect } = require("../../middleware/Middleware");
 
 router.get("/", userProtect, walletController.getWallet);
-router.post("/", userProtect, walletController.addToWallet);
+router.post("/addmoney", userProtect, walletController.addToWallet);
 
 module.exports = router;

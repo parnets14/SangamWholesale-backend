@@ -24,6 +24,7 @@ const addToWallet = async (req, res) => {
 
   try {
     const { amount } = req.body;
+    console.log("vc", req.body);
     if (amount <= 0) {
       await session.abortTransaction();
       return res.status(400).json({ error: "Amount must be positive" });
