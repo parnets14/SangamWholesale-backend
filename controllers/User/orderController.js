@@ -232,145 +232,56 @@ const orderController = {
   },
 
   // Get User Orders
-  // getUserOrders: async (req, res) => {
-  //   console.log("Fetching user orders...");
-  //   try {
-  //     // Fetch orders without population first
-  //     const orders = await Order.find({ user: req.user._id })
-  //       .populate("deliveryAddress")
-  //       .sort({ createdAt: -1 });
-
-  //     // Manually handle the population of products
-  //     const populatedOrders = [];
-
-  //     for (const order of orders) {
-  //       const orderObj = order.toObject();
-  //       const populatedItems = [];
-
-  //       for (const item of orderObj.items) {
-  //         try {
-  //           // Find the product based on the productType
-  //           let product = null;
-  //           if (item.productType === "buyonce") {
-  //             // Use the Product model to find buyonce products
-  //             const productModel = mongoose.model("Product");
-  //             product = await productModel
-  //               .findById(item.product)
-  //               .select("name price image");
-  //           } else if (item.productType === "subscription") {
-  //             // Also use the Product model for subscription products (adjust if needed)
-  //             const productModel = mongoose.model("Product");
-  //             product = await productModel
-  //               .findById(item.product)
-  //               .select("name price image");
-  //           }
-
-  //           // Add the product to the item
-  //           populatedItems.push({
-  //             ...item,
-  //             product: product,
-  //           });
-  //         } catch (error) {
-  //           // If there's an error finding the product, just add the item without population
-  //           populatedItems.push(item);
-  //         }
-  //       }
-
-  //       // Replace the items with populated items
-  //       orderObj.items = populatedItems;
-  //       populatedOrders.push(orderObj);
-  //     }
-
-  //     console.log(`Found ${orders.length} orders`);
-
-  //     res.json({
-  //       success: true,
-  //       data: populatedOrders,
-  //     });
-  //   } catch (error) {
-  //     console.error("Get orders error:", error);
-  //     res.status(500).json({
-  //       success: false,
-  //       message: "Failed to fetch orders",
-  //       error: error.message,
-  //     });
-  //   }
-  // },
-
-  // Get User Orders with full product details
-  // Get User Orders with full product details
   getUserOrders: async (req, res) => {
+    console.log("Fetching user orders...");
     try {
-      // 1. First get orders with populated address
+      // Fetch orders without population first
       const orders = await Order.find({ user: req.user._id })
-        .populate({
-          path: "deliveryAddress",
-          select:
-            "name phone address_line1 address_line2 city state postalCode",
-        })
+        .populate("deliveryAddress")
         .sort({ createdAt: -1 });
 
-      // 2. Get all product IDs from all orders to minimize queries
-      const allProductIds = {
-        buyonce: [],
-        subscription: [],
-      };
+      // Manually handle the population of products
+      const populatedOrders = [];
 
-      orders.forEach((order) => {
-        order.items.forEach((item) => {
-          if (item.productType === "buyonce") {
-            allProductIds.buyonce.push(item.product);
-          } else if (item.productType === "subscription") {
-            allProductIds.subscription.push(item.product);
-          }
-        });
-      });
-
-      // 3. Fetch all products in bulk
-      const Product = mongoose.model("Product");
-      const SubscriptionProduct = mongoose.model("SubscriptionProduct"); // Adjust if different
-
-      const [buyonceProducts, subscriptionProducts] = await Promise.all([
-        Product.find({ _id: { $in: allProductIds.buyonce } }).select(
-          "name description price image"
-        ),
-        SubscriptionProduct.find({
-          _id: { $in: allProductIds.subscription },
-        }).select("name description price image"),
-      ]);
-
-      // Create maps for quick lookup
-      const buyonceProductMap = buyonceProducts.reduce((map, product) => {
-        map[product._id.toString()] = product;
-        return map;
-      }, {});
-
-      const subscriptionProductMap = subscriptionProducts.reduce(
-        (map, product) => {
-          map[product._id.toString()] = product;
-          return map;
-        },
-        {}
-      );
-
-      // 4. Construct the response with populated products
-      const populatedOrders = orders.map((order) => {
+      for (const order of orders) {
         const orderObj = order.toObject();
+        const populatedItems = [];
 
-        orderObj.items = orderObj.items.map((item) => {
-          const product =
-            item.productType === "buyonce"
-              ? buyonceProductMap[item.product.toString()]
-              : subscriptionProductMap[item.product.toString()];
+        for (const item of orderObj.items) {
+          try {
+            // Find the product based on the productType
+            let product = null;
+            if (item.productType === "buyonce") {
+              // Use the Product model to find buyonce products
+              const productModel = mongoose.model("Product");
+              product = await productModel
+                .findById(item.product)
+                .select("name price image");
+            } else if (item.productType === "subscription") {
+              // Also use the Product model for subscription products (adjust if needed)
+              const productModel = mongoose.model("Product");
+              product = await productModel
+                .findById(item.product)
+                .select("name price image");
+            }
 
-          return {
-            ...item,
-            product: product || { _id: item.product }, // Fallback if product not found
-          };
-        });
+            // Add the product to the item
+            populatedItems.push({
+              ...item,
+              product: product,
+            });
+          } catch (error) {
+            // If there's an error finding the product, just add the item without population
+            populatedItems.push(item);
+          }
+        }
 
-        return orderObj;
-      });
+        // Replace the items with populated items
+        orderObj.items = populatedItems;
+        populatedOrders.push(orderObj);
+      }
+
+      console.log(`Found ${orders.length} orders`);
 
       res.json({
         success: true,
@@ -385,6 +296,95 @@ const orderController = {
       });
     }
   },
+
+  //Get User Orders with full product details
+  // Get User Orders with full product details
+  // getUserOrders: async (req, res) => {
+  //   try {
+  //     // 1. First get orders with populated address
+  //     const orders = await Order.find({ user: req.user._id })
+  //       .populate({
+  //         path: "deliveryAddress",
+  //         select:
+  //           "name phone address_line1 address_line2 city state postalCode",
+  //       })
+  //       .sort({ createdAt: -1 });
+
+  //     // 2. Get all product IDs from all orders to minimize queries
+  //     const allProductIds = {
+  //       buyonce: [],
+  //       subscription: [],
+  //     };
+
+  //     orders.forEach((order) => {
+  //       order.items.forEach((item) => {
+  //         if (item.productType === "buyonce") {
+  //           allProductIds.buyonce.push(item.product);
+  //         } else if (item.productType === "subscription") {
+  //           allProductIds.subscription.push(item.product);
+  //         }
+  //       });
+  //     });
+
+  //     // 3. Fetch all products in bulk
+  //     const Product = mongoose.model("Product");
+  //     const SubscriptionProduct = mongoose.model("SubscriptionProduct"); // Adjust if different
+
+  //     const [buyonceProducts, subscriptionProducts] = await Promise.all([
+  //       Product.find({ _id: { $in: allProductIds.buyonce } }).select(
+  //         "name description price image"
+  //       ),
+  //       SubscriptionProduct.find({
+  //         _id: { $in: allProductIds.subscription },
+  //       }).select("name description price image"),
+  //     ]);
+
+  //     // Create maps for quick lookup
+  //     const buyonceProductMap = buyonceProducts.reduce((map, product) => {
+  //       map[product._id.toString()] = product;
+  //       return map;
+  //     }, {});
+
+  //     const subscriptionProductMap = subscriptionProducts.reduce(
+  //       (map, product) => {
+  //         map[product._id.toString()] = product;
+  //         return map;
+  //       },
+  //       {}
+  //     );
+
+  //     // 4. Construct the response with populated products
+  //     const populatedOrders = orders.map((order) => {
+  //       const orderObj = order.toObject();
+
+  //       orderObj.items = orderObj.items.map((item) => {
+  //         const product =
+  //           item.productType === "buyonce"
+  //             ? buyonceProductMap[item.product.toString()]
+  //             : subscriptionProductMap[item.product.toString()];
+
+  //         return {
+  //           ...item,
+  //           product: product || { _id: item.product }, // Fallback if product not found
+  //         };
+  //       });
+
+  //       return orderObj;
+  //     });
+
+  //     res.json({
+  //       success: true,
+  //       data: populatedOrders,
+  //     });
+  //   } catch (error) {
+  //     console.error("Get orders error:", error);
+  //     res.status(500).json({
+  //       success: false,
+  //       message: "Failed to fetch orders",
+  //       error: error.message,
+  //     });
+  //   }
+  // },
   // Get Order Details
   getOrderDetails: async (req, res) => {
     console.log("Fetching order details...");
