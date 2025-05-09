@@ -77,6 +77,39 @@ const getCombinedCart = async (req, res) => {
 };
 
 // Helper function to find order by item ID
+// const findOrderByItemId = async (userId, itemId) => {
+//   // Check in BuyOnce orders
+//   let buyonceOrder = await Buyonce.findOne({
+//     user: userId,
+//     "order._id": itemId,
+//   });
+
+//   if (buyonceOrder) {
+//     return {
+//       type: "buyonce",
+//       order: buyonceOrder,
+//       item: buyonceOrder.order.id(itemId),
+//     };
+//   }
+
+//   // Check in Subscriptions
+//   let subscription = await Subscription.findOne({
+//     user: userId,
+//     "Subscriptions._id": itemId,
+//   });
+
+//   if (subscription) {
+//     return {
+//       type: "subscription",
+//       order: subscription,
+//       item: subscription.Subscriptions.id(itemId),
+//     };
+//   }
+
+//   return null;
+// };
+
+// Helper function to find order by item ID
 const findOrderByItemId = async (userId, itemId) => {
   // Check in BuyOnce orders
   let buyonceOrder = await Buyonce.findOne({
@@ -92,9 +125,9 @@ const findOrderByItemId = async (userId, itemId) => {
     };
   }
 
-  // Check in Subscriptions
+  // Check in Subscriptions - FIX: Use userId instead of user
   let subscription = await Subscription.findOne({
-    user: userId,
+    userId: userId,  // Changed from 'user' to 'userId'
     "Subscriptions._id": itemId,
   });
 
@@ -163,6 +196,63 @@ const updateCartItem = async (req, res) => {
 };
 
 // Remove item from cart/orders
+// const removeFromCart = async (req, res) => {
+//   try {
+//     const { itemId } = req.params;
+//     const userId = req.user._id;
+
+//     // Try to remove from BuyOnce orders
+//     const buyonceUpdate = await Buyonce.findOneAndUpdate(
+//       {
+//         user: userId,
+//         "order._id": itemId,
+//       },
+//       {
+//         $pull: { order: { _id: itemId } },
+//       },
+//       { new: true }
+//     );
+
+//     if (buyonceUpdate) {
+//       // If no more items in the order, delete it
+//       if (buyonceUpdate.order.length === 0) {
+//         await Buyonce.findByIdAndDelete(buyonceUpdate._id);
+//       }
+//       return res.status(200).json({
+//         success: true,
+//         message: "BuyOnce item removed successfully",
+//       });
+//     }
+
+//     // Try to remove from Subscriptions
+//     const subscriptionUpdate = await Subscription.findOneAndUpdate(
+//       {
+//         user: userId,
+//         "Subscriptions._id": itemId,
+//       },
+//       {
+//         $pull: { Subscriptions: { _id: itemId } },
+//       },
+//       { new: true }
+//     );
+
+//     if (subscriptionUpdate) {
+//       // If no more items in the subscription, delete it
+//       if (subscriptionUpdate.Subscriptions.length === 0) {
+//         await Subscription.findByIdAndDelete(subscriptionUpdate._id);
+//       }
+//       return res.status(200).json({
+//         success: true,
+//         message: "Subscription item removed successfully",
+//       });
+//     }
+
+//     res.status(404).json({ error: "Item not found in your orders" });
+//   } catch (error) {
+//     res.status(400).json({ error: error.message });
+//   }
+// };
+// Remove item from cart/orders
 const removeFromCart = async (req, res) => {
   try {
     const { itemId } = req.params;
@@ -192,9 +282,10 @@ const removeFromCart = async (req, res) => {
     }
 
     // Try to remove from Subscriptions
+    // FIX: Change 'user' to 'userId' to match your schema
     const subscriptionUpdate = await Subscription.findOneAndUpdate(
       {
-        user: userId,
+        userId: userId,  // Changed from 'user' to 'userId'
         "Subscriptions._id": itemId,
       },
       {
@@ -219,7 +310,6 @@ const removeFromCart = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
-
 // Apply coupon to orders
 const applyCoupon = async (req, res) => {
   try {
