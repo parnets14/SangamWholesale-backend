@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const {
   createVacation,
+  getAllVacations,
   getVacation,
   updateVacation,
   deleteVacation,
@@ -9,6 +10,7 @@ const {
 
 // Routes
 router.post("/", createVacation);
+router.get("/", getAllVacations);
 router.get("/:id", getVacation);
 router.put("/:id", updateVacation);
 router.delete("/:id", deleteVacation);
