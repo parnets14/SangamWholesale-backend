@@ -43,6 +43,11 @@ const buyonceSchema = new mongoose.Schema(
           enum: ["onhold", "delivered", "upcoming", "vacation", "cancelled"],
           default: "upcoming",
         },
+        subscriptionStatus: {
+          type: String,
+          enum: ["Active", "InActive"],
+          default: "Active",
+        },
       },
     ],
   },
