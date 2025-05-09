@@ -235,57 +235,19 @@ const orderController = {
   getUserOrders: async (req, res) => {
     console.log("Fetching user orders...");
     try {
-      // Fetch orders without population first
       const orders = await Order.find({ user: req.user._id })
         .populate("deliveryAddress")
+        .populate({
+          path: "items.product",
+          select: "name price image description category"
+        })
         .sort({ createdAt: -1 });
-
-      // Manually handle the population of products
-      const populatedOrders = [];
-
-      for (const order of orders) {
-        const orderObj = order.toObject();
-        const populatedItems = [];
-
-        for (const item of orderObj.items) {
-          try {
-            // Find the product based on the productType
-            let product = null;
-            if (item.productType === "buyonce") {
-              // Use the Product model to find buyonce products
-              const productModel = mongoose.model("Product");
-              product = await productModel
-                .findById(item.product)
-                .select("name price image");
-            } else if (item.productType === "subscription") {
-              // Also use the Product model for subscription products (adjust if needed)
-              const productModel = mongoose.model("Product");
-              product = await productModel
-                .findById(item.product)
-                .select("name price image");
-            }
-
-            // Add the product to the item
-            populatedItems.push({
-              ...item,
-              product: product,
-            });
-          } catch (error) {
-            // If there's an error finding the product, just add the item without population
-            populatedItems.push(item);
-          }
-        }
-
-        // Replace the items with populated items
-        orderObj.items = populatedItems;
-        populatedOrders.push(orderObj);
-      }
 
       console.log(`Found ${orders.length} orders`);
 
       res.json({
         success: true,
-        data: populatedOrders,
+        data: orders
       });
     } catch (error) {
       console.error("Get orders error:", error);
@@ -306,7 +268,12 @@ const orderController = {
       const order = await Order.findOne({
         _id: orderId,
         user: req.user._id,
-      }).populate("deliveryAddress");
+      })
+      .populate("deliveryAddress")
+      .populate({
+        path: "items.product",
+        select: "name price image description category"
+      });
 
       if (!order) {
         return res.status(404).json({
@@ -315,42 +282,9 @@ const orderController = {
         });
       }
 
-      // Manually populate the products
-      const orderObj = order.toObject();
-      const populatedItems = [];
-
-      for (const item of orderObj.items) {
-        try {
-          // Find the product based on the productType
-          let product = null;
-          if (item.productType === "buyonce") {
-            const productModel = mongoose.model("Product");
-            product = await productModel
-              .findById(item.product)
-              .select("name price image");
-          } else if (item.productType === "subscription") {
-            const productModel = mongoose.model("Product");
-            product = await productModel
-              .findById(item.product)
-              .select("name price image");
-          }
-
-          // Add the product to the item
-          populatedItems.push({
-            ...item,
-            product: product,
-          });
-        } catch (error) {
-          populatedItems.push(item);
-        }
-      }
-
-      // Replace the items with populated items
-      orderObj.items = populatedItems;
-
       res.json({
         success: true,
-        data: orderObj,
+        data: order,
       });
     } catch (error) {
       console.error("Get order details error:", error);
