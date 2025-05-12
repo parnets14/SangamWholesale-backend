@@ -7,7 +7,7 @@ const {
 } = require("../../controllers/Admin/adminController");
 
 // private routes
-router.post("/login", adminLogin);
+router.post("/adminlogin", adminLogin);
 router.post("/adminRegister", adminRegister);
 
 module.exports = router;

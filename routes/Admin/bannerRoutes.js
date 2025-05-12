@@ -2,29 +2,27 @@ const express = require("express");
 const router = express.Router();
 
 const bannerController = require("../../controllers/Admin/bannerController");
-const { adminProtect } = require("../../middleware/Middleware");
+// const { adminProtect } = require("../../middleware/Middleware");
 const createUploader = require("../../middleware/multer");
 
-const uploadCategory = createUploader("banners");
+const uploadBanner = createUploader("banners");
 
 // Public routes
-router.get("/", bannerController.getAllBanners);
+router.get("/getbanner", bannerController.getAllBanner);
 
 // Admin-only routes
 router.post(
-  "/",
-  adminProtect,
-  uploadCategory.single("banner"),
+  "/addbanner",
+  uploadBanner.any(),
   bannerController.createBanner
 );
 
 router.put(
-  "/:id",
-  adminProtect,
-  uploadCategory.single("banner"),
+  "/updatebanner/:id",
+   uploadBanner.any(),
   bannerController.updateBanner
 );
 
-router.delete("/:id", adminProtect, bannerController.deleteBanner);
+router.delete("/deletebanner/:id", bannerController.deleteBanner);
 
 module.exports = router;

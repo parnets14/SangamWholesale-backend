@@ -3,30 +3,23 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const adminRegister = async (req, res) => {
-  const { name, email, password, phone } = req.body;
+  const { adminName, adminEmail, adminPassword,role } = req.body;
   try {
-    const isEmail = await adminModel.findOne({ email });
+    const isEmail = await adminModel.findOne({ adminEmail });
     if (isEmail) {
       return res.status(409).json({
         success: false,
         message: "Email already exists",
       });
     }
-    const isMobileExist = await adminModel.findOne({ phone });
-    if (isMobileExist) {
-      return res.status(409).json({
-        success: false,
-        message: "phone already exists",
-      });
-    }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
     const newAdmin = new adminModel({
-      name,
-      email,
-      phone,
-      password: hashedPassword,
+      adminName,
+      adminEmail,
+      role,
+      adminPassword: hashedPassword,
     });
 
     await newAdmin.save();
@@ -46,9 +39,9 @@ const adminRegister = async (req, res) => {
 };
 
 const adminLogin = async (req, res) => {
-  const { email, password } = req.body;
+  const { adminEmail, adminPassword } = req.body;
   try {
-    const admin = await adminModel.findOne({ email });
+    const admin = await adminModel.findOne({ adminEmail });
     if (!admin) {
       return res.status(404).json({
         success: false,
@@ -56,7 +49,7 @@ const adminLogin = async (req, res) => {
       });
     }
 
-    const isPasswordMatch = await bcrypt.compare(password, admin.password);
+    const isPasswordMatch = await bcrypt.compare(adminPassword, admin.adminPassword);
     if (!isPasswordMatch) {
       return res.status(400).json({
         success: false,
