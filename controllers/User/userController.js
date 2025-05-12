@@ -1,5 +1,11 @@
 const User = require("../../models/User/userModel");
 const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
+const Order = require("../../models/User/orderModel");
+const Wallet = require("../../models/User/walletModel");
+const Address = require("../../models/User/addressModel");
+const Subscription = require("../../models/User/subscriptionModel");
+const Buyonce = require("../../models/User/buyonceModel");
 
 // Generate 6-digit OTP
 const generateOTP = () =>
@@ -195,6 +201,7 @@ const updateProfile = async (req, res) => {
     });
   }
 };
+
 // Get all users (admin only)
 const getAllProfiles = async (req, res) => {
   try {
@@ -208,6 +215,58 @@ const getAllProfiles = async (req, res) => {
   }
 };
 
+// Delete user account and all associated data
+const deleteUserAccount = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Start a session for transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Delete all user's orders
+      await Order.deleteMany({ user: userId }).session(session);
+
+      // Delete user's wallet
+      await Wallet.deleteOne({ user: userId }).session(session);
+
+      // Delete all user's addresses
+      await Address.deleteMany({ user: userId }).session(session);
+
+      // Delete all user's subscriptions
+      await Subscription.deleteMany({ userId: userId }).session(session);
+
+      // Delete all user's buyonce orders
+      await Buyonce.deleteMany({ user: userId }).session(session);
+
+      // Finally, delete the user account
+      await User.findByIdAndDelete(userId).session(session);
+
+      // Commit the transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      res.status(200).json({
+        success: true,
+        message: "User account and all associated data deleted successfully"
+      });
+    } catch (error) {
+      // If any error occurs, abort transaction
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
+    }
+  } catch (error) {
+    console.error("Delete account error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while deleting account",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -215,4 +274,5 @@ module.exports = {
   getProfile,
   updateProfile,
   getAllProfiles,
+  deleteUserAccount,
 };

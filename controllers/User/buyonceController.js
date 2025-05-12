@@ -14,7 +14,7 @@ const createBuyonceOrder = async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Validate each product in the order
+    // Validate each product in the order and set subscriptionStatus
     for (const item of order) {
       const product = await Product.findById(item.productId);
       if (!product) {
@@ -35,6 +35,10 @@ const createBuyonceOrder = async (req, res) => {
       if (!item.deliveryDate || isNaN(new Date(item.deliveryDate))) {
         return res.status(400).json({ error: "Invalid delivery date" });
       }
+
+      // Set subscriptionStatus to Active by default
+      item.subscriptionStatus = "Active";
+      item.status = "upcoming";
     }
 
     const buyonceOrder = new Buyonce({ user, order });
@@ -46,7 +50,51 @@ const createBuyonceOrder = async (req, res) => {
   }
 };
 
-// In getUpcomingBuyonceOrders
+// Get all BuyOnce orders (admin only)
+const getAllBuyonceOrders = async (req, res) => {
+  try {
+    const orders = await Buyonce.find()
+      .populate("user", "name email")
+      .populate("order.productId", "name price image description")
+      .populate("order.address")
+      .select({
+        "order.subscriptionStatus": 1,
+        "order.status": 1,
+        "order.productId": 1,
+        "order.quantity": 1,
+        "order.deliveryTime": 1,
+        "order.deliveryDate": 1,
+        "order.address": 1,
+        "order.orderType": 1,
+        user: 1,
+        createdAt: 1,
+        updatedAt: 1
+      });
+
+    // Transform the response to include all necessary fields
+    const transformedOrders = orders.map(order => ({
+      ...order.toObject(),
+      order: order.order.map(item => ({
+        ...item,
+        subscriptionStatus: item.subscriptionStatus || "Active",
+        status: item.status || "upcoming"
+      }))
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: transformedOrders
+    });
+  } catch (error) {
+    console.error("Error in getAllBuyonceOrders:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+// Get Upcoming BuyOnce orders
 const getUpcomingBuyonceOrders = async (req, res) => {
   try {
     const userId = req.params.userId;
@@ -55,41 +103,54 @@ const getUpcomingBuyonceOrders = async (req, res) => {
 
     const orders = await Buyonce.find({
       user: userId,
-      "order.deliveryDate": { $gte: today }, // Fixed field name
+      "order.deliveryDate": { $gte: today }
     })
-      .populate("order.productId", "name price image")
+      .populate({
+        path: "order.productId",
+        select: "name price image description"
+      })
       .populate("order.address");
 
     if (!orders || orders.length === 0) {
-      return res.status(404).json({ message: "No upcoming orders found" });
+      return res.status(200).json({
+        success: true,
+        message: "No upcoming orders found",
+        data: []
+      });
     }
-    console.log("orders", orders);
-    const result = orders
-      .map((order) => ({
-        ...order.toObject(),
-        order: order.order.filter(
-          (item) => new Date(item.deliveryDate) >= today
-        ), // Fixed field name
-      }))
-      .filter((order) => order.order.length > 0);
 
-    res.status(200).json(result);
+    // Transform and filter the response
+    const transformedOrders = orders.flatMap(order => 
+      order.order
+        .filter(item => new Date(item.deliveryDate) >= today)
+        .map(item => ({
+          type: item.orderType || "buyonce",
+          id: item._id,
+          product: {
+            _id: item.productId._id,
+            name: item.productId.name,
+            price: item.productId.price,
+            image: item.productId.image
+          },
+          quantity: item.quantity,
+          status: item.status || "upcoming",
+          subscriptionStatus: item.subscriptionStatus || "Active",
+          deliveryDate: item.deliveryDate,
+          address: item.address,
+          createdAt: order.createdAt
+        }))
+    );
+
+    res.status(200).json({
+      success: true,
+      data: transformedOrders
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Get all BuyOnce orders (admin only)
-const getAllBuyonceOrders = async (req, res) => {
-  try {
-    const orders = await Buyonce.find()
-      .populate("user", "name email")
-      .populate("order.productId", "name price")
-      .populate("order.address");
-
-    res.status(200).json(orders);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error in getUpcomingBuyonceOrders:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
   }
 };
 
@@ -100,21 +161,53 @@ const getUserBuyonceOrders = async (req, res) => {
     console.log("Authenticated userId:", userId);
 
     const orders = await Buyonce.find({ user: userId })
-      .populate("order.productId", "name price image")
-      .populate("order.address");
+      .populate("order.productId", "name price image description")
+      .populate("order.address")
+      .select({
+        "order.subscriptionStatus": 1,
+        "order.status": 1,
+        "order.productId": 1,
+        "order.quantity": 1,
+        "order.deliveryTime": 1,
+        "order.deliveryDate": 1,
+        "order.address": 1,
+        "order.orderType": 1,
+        createdAt: 1,
+        updatedAt: 1
+      });
 
     if (!orders || orders.length === 0) {
       return res.status(200).json({
+        success: true,
         message: "No orders found for this user",
         userId,
+        data: []
       });
     }
 
-    res.status(200).json(orders);
+    // Transform the response to include all necessary fields
+    const transformedOrders = orders.map(order => ({
+      ...order.toObject(),
+      order: order.order.map(item => ({
+        ...item,
+        subscriptionStatus: item.subscriptionStatus || "Active", // Ensure subscriptionStatus is included
+        status: item.status || "upcoming" // Ensure status is included
+      }))
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: transformedOrders
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error in getUserBuyonceOrders:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
   }
 };
+
 // Get a single BuyOnce order by ID
 const getBuyonceOrderById = async (req, res) => {
   try {
@@ -122,16 +215,49 @@ const getBuyonceOrderById = async (req, res) => {
 
     const order = await Buyonce.findById(orderId)
       .populate("user", "name email")
-      .populate("order.productId", "name price description")
-      .populate("order.address");
+      .populate("order.productId", "name price image description")
+      .populate("order.address")
+      .select({
+        "order.subscriptionStatus": 1,
+        "order.status": 1,
+        "order.productId": 1,
+        "order.quantity": 1,
+        "order.deliveryTime": 1,
+        "order.deliveryDate": 1,
+        "order.address": 1,
+        "order.orderType": 1,
+        user: 1,
+        createdAt: 1,
+        updatedAt: 1
+      });
 
     if (!order) {
-      return res.status(404).json({ error: "Order not found" });
+      return res.status(404).json({
+        success: false,
+        error: "Order not found"
+      });
     }
 
-    res.status(200).json(order);
+    // Transform the response to include all necessary fields
+    const transformedOrder = {
+      ...order.toObject(),
+      order: order.order.map(item => ({
+        ...item,
+        subscriptionStatus: item.subscriptionStatus || "Active",
+        status: item.status || "upcoming"
+      }))
+    };
+
+    res.status(200).json({
+      success: true,
+      data: transformedOrder
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error in getBuyonceOrderById:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
   }
 };
 

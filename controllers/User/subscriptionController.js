@@ -8,6 +8,7 @@ const createSubscription = async (req, res) => {
   try {
     const { userId, Subscriptions, totalAmount } = req.body;
     console.log(" req.body", req.body);
+    
     // Validate user exists
     const userExists = await User.findById(userId);
     if (!userExists) {
@@ -16,6 +17,10 @@ const createSubscription = async (req, res) => {
 
     // Process each subscription item
     for (const sub of Subscriptions) {
+      // Set subscriptionStatus to Active and status to upcoming by default
+      sub.subscriptionStatus = "Active";
+      sub.status = "upcoming";
+
       // Validate product exists
       const product = await Product.findById(sub.productId);
       if (!product) {
@@ -40,14 +45,11 @@ const createSubscription = async (req, res) => {
           });
         }
 
-        // Set default dates for "Every Day" frequency to satisfy schema requirements
+        // Set default dates for "Every Day" frequency
         const today = new Date();
-        // If not provided, set default startDate to today
         if (!sub.startDate) {
           sub.startDate = today.toISOString().split("T")[0];
         }
-
-        // If not provided, set default endDate to one year from today
         if (!sub.endDate) {
           const oneYearLater = new Date(today);
           oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
@@ -64,7 +66,6 @@ const createSubscription = async (req, res) => {
             error: "Start date is required for interval frequency",
           });
         }
-        // Set default endDate if not provided
         if (!sub.endDate) {
           const startDate = new Date(sub.startDate);
           const oneYearLater = new Date(startDate);
@@ -77,8 +78,7 @@ const createSubscription = async (req, res) => {
         );
         if (!hasDayWithQuantity) {
           return res.status(400).json({
-            error:
-              "At least one day must be selected with quantity for custom frequency",
+            error: "At least one day must be selected with quantity for custom frequency",
           });
         }
         if (!sub.startDate) {
@@ -86,7 +86,6 @@ const createSubscription = async (req, res) => {
             error: "Start date is required for custom frequency",
           });
         }
-        // Set default endDate if not provided
         if (!sub.endDate) {
           const startDate = new Date(sub.startDate);
           const oneYearLater = new Date(startDate);
