@@ -295,6 +295,43 @@ const orderController = {
       });
     }
   },
+
+  // Update Order Status
+  updateOrderStatus: async (req, res) => {
+    try {
+      const { orderId } = req.params;
+      const { orderStatus } = req.body;
+
+      const order = await Order.findOne({
+        _id: orderId,
+        user: req.user._id
+      });
+
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found"
+        });
+      }
+
+      // Update the order status
+      order.orderStatus = orderStatus;
+      await order.save();
+
+      res.json({
+        success: true,
+        message: "Order status updated successfully",
+        data: order
+      });
+    } catch (error) {
+      console.error("Update order status error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update order status",
+        error: error.message
+      });
+    }
+  },
 };
 
 module.exports = orderController;

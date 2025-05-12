@@ -13,4 +13,7 @@ router.get("/", userProtect, orderController.getUserOrders);
 // Get order details
 router.get("/:orderId", userProtect, orderController.getOrderDetails);
 
+// Update order status
+router.put("/:orderId", userProtect, orderController.updateOrderStatus);
+
 module.exports = router;
