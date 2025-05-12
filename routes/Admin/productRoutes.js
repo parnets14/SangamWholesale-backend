@@ -14,15 +14,9 @@ router.post(
   uploadCategory.single("image"),
   productController.createProduct
 );
-
 router.get("/", productController.getAllProducts);
 router.get("/category/:categoryId", productController.getProductsByCategory);
-router.put(
-  "/:id",
-  adminProtect,
-  uploadCategory.single("image"),
-  productController.updateProduct
-);
+router.put("/:id",adminProtect,uploadCategory.single("image"),productController.updateProduct);
 router.delete("/:id", adminProtect, productController.deleteProduct);
 
 module.exports = router;

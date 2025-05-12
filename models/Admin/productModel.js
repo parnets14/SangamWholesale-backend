@@ -43,7 +43,7 @@ const productSchema = new mongoose.Schema(
     },
     isActive: {
       type: Boolean,
-      default: true, // Soft delete capability
+      default: true, 
     },
     category: {
       type: mongoose.Schema.Types.ObjectId,
