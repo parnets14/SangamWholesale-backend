@@ -2,11 +2,15 @@ const mongoose = require("mongoose");
 
 const bannerSchema = new mongoose.Schema(
   {
-    banner: {
-      type: String,
-      required: [true, "banner is required"],
-      trim: true,
+    bannerImg: {
+      type: String
     },
+    bannerTitle:{
+      type :String,
+    },
+    bannerDesc:{
+      type:String,
+    }
   },
   { timestamps: true }
 );
