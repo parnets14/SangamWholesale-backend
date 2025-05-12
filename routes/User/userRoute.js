@@ -7,6 +7,7 @@ const {
   getProfile,
   updateProfile,
   getAllProfiles,
+  deleteUserAccount,
 } = require("../../controllers/User/userController");
 const { userProtect, adminProtect } = require("../../middleware/Middleware");
 
@@ -35,4 +36,8 @@ router.put("/profile/update", userProtect, updateProfile);
 
 // (Optional Admin) Get all user profiles
 router.get("/allUser", adminProtect, getAllProfiles);
+
+// Delete user account
+router.delete("/delete-account", userProtect, deleteUserAccount);
+
 module.exports = router;

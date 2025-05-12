@@ -5,6 +5,8 @@ const Subscription = require("../../models/User/subscriptionModel");
 const Address = require("../../models/User/addressModel");
 const Wallet = require("../../models/User/walletModel");
 
+
+
 const orderController = {
   // Place Order
   confirmOrder: async (req, res) => {
@@ -89,6 +91,7 @@ const orderController = {
               product: item.productId._id,
               quantity: item.quantity,
               price: itemPrice,
+              subscriptionStatus: "Active"
             });
           }
         });
@@ -107,6 +110,7 @@ const orderController = {
               product: item.productId._id,
               quantity: item.quantity,
               price: itemPrice,
+              subscriptionStatus: "Active"
             });
           }
         });
@@ -241,13 +245,35 @@ const orderController = {
           path: "items.product",
           select: "name price image description category"
         })
+        .select({
+          "items.subscriptionStatus": 1,
+          "items.productType": 1,
+          "items.product": 1,
+          "items.quantity": 1,
+          "items.price": 1,
+          "deliveryAddress": 1,
+          "totalAmount": 1,
+          "orderStatus": 1,
+          "deliverySlot": 1,
+          "deliveryDate": 1,
+          "createdAt": 1
+        })
         .sort({ createdAt: -1 });
 
       console.log(`Found ${orders.length} orders`);
 
+      // Transform response to ensure subscriptionStatus
+      const transformedOrders = orders.map(order => ({
+        ...order.toObject(),
+        items: order.items.map(item => ({
+          ...item,
+          subscriptionStatus: item.subscriptionStatus || "Active"
+        }))
+      }));
+
       res.json({
         success: true,
-        data: orders
+        data: transformedOrders
       });
     } catch (error) {
       console.error("Get orders error:", error);
@@ -328,6 +354,212 @@ const orderController = {
       res.status(500).json({
         success: false,
         message: "Failed to update order status",
+        error: error.message
+      });
+    }
+  },
+
+  // Add this new controller function
+  updateItemSubscriptionStatus: async (req, res) => {
+    try {
+      const { orderId, itemId } = req.params;
+      const { subscriptionStatus } = req.body;
+
+      if (!["Active", "InActive"].includes(subscriptionStatus)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid subscription status"
+        });
+      }
+
+      const order = await Order.findOne({
+        _id: orderId,
+        user: req.user._id
+      });
+
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found"
+        });
+      }
+
+      // Find the item by product ID instead of using the subdocument ID method
+      const itemIndex = order.items.findIndex(item => 
+        item.product.toString() === itemId || 
+        (item.product._id && item.product._id.toString() === itemId)
+      );
+      
+      if (itemIndex === -1) {
+        return res.status(404).json({
+          success: false,
+          message: "Order item not found"
+        });
+      }
+
+      // Update the subscription status
+      order.items[itemIndex].subscriptionStatus = subscriptionStatus;
+      await order.save();
+
+      res.json({
+        success: true,
+        message: "Subscription status updated successfully",
+        data: order
+      });
+    } catch (error) {
+      console.error("Update subscription status error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update subscription status",
+        error: error.message
+      });
+    }
+  },
+
+  // Add this new controller function for canceling order items
+   cancelOrderItem: async (req, res) => {
+    try {
+      const { orderId, itemId } = req.params;
+      const userId = req.user._id;
+
+      const order = await Order.findOne({
+        _id: orderId,
+        user: userId
+      });
+
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found"
+        });
+      }
+
+      // Find the specific item
+      const item = order.items.id(itemId);
+      if (!item) {
+        return res.status(404).json({
+          success: false,
+          message: "Order item not found"
+        });
+      }
+
+      // Check if order can be cancelled (you might want to add more conditions)
+      if (order.orderStatus === "delivered") {
+        return res.status(400).json({
+          success: false,
+          message: "Cannot cancel delivered order"
+        });
+      }
+
+      // Update order item status
+      item.subscriptionStatus = "InActive";
+      order.orderStatus = "cancelled";
+
+      // If it's a wallet payment, refund the amount
+      if (order.paymentMethod === "wallet" && order.paymentStatus === "completed") {
+        const wallet = await Wallet.findOne({ user: userId });
+        if (wallet) {
+          wallet.balance += (item.price * item.quantity);
+          await wallet.save();
+        }
+      }
+
+      await order.save();
+
+      res.json({
+        success: true,
+        message: "Order item cancelled successfully",
+        data: {
+          order,
+          refunded: order.paymentMethod === "wallet" ? (item.price * item.quantity) : 0
+        }
+      });
+
+    } catch (error) {
+      console.error("Cancel order item error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to cancel order item",
+        error: error.message
+      });
+    }
+  },
+
+  // Add this new controller function for deleting order items
+  deleteOrderItem: async (req, res) => {
+    try {
+      const { orderId, itemId } = req.params;
+      const userId = req.user._id;
+
+      const order = await Order.findOne({
+        _id: orderId,
+        user: userId
+      });
+
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found"
+        });
+      }
+
+      // Find the item index by matching the product ID
+      const itemIndex = order.items.findIndex(item => 
+        item.product.toString() === itemId || 
+        (item.product._id && item.product._id.toString() === itemId)
+      );
+      
+      if (itemIndex === -1) {
+        return res.status(404).json({
+          success: false,
+          message: "Order item not found"
+        });
+      }
+
+      // Get the item before removing it
+      const item = order.items[itemIndex];
+
+      // Remove the item from the items array
+      order.items.splice(itemIndex, 1);
+
+      // If no items left, delete the entire order
+      if (order.items.length === 0) {
+        await Order.findByIdAndDelete(orderId);
+        return res.json({
+          success: true,
+          message: "Order deleted as no items remaining",
+        });
+      }
+
+      // Recalculate order totals
+      order.totalAmount -= (item.price * item.quantity);
+      order.finalAmount = order.totalAmount - order.discount;
+
+      // If it was a wallet payment, refund the amount
+      if (order.paymentMethod === "wallet" && order.paymentStatus === "completed") {
+        const wallet = await Wallet.findOne({ user: userId });
+        if (wallet) {
+          wallet.balance += (item.price * item.quantity);
+          await wallet.save();
+        }
+      }
+
+      await order.save();
+
+      res.json({
+        success: true,
+        message: "Order item deleted successfully",
+        data: {
+          order,
+          refunded: order.paymentMethod === "wallet" ? (item.price * item.quantity) : 0
+        }
+      });
+
+    } catch (error) {
+      console.error("Delete order item error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to delete order item",
         error: error.message
       });
     }

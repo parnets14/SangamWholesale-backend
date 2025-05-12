@@ -29,6 +29,11 @@ const orderSchema = new mongoose.Schema(
           type: Number,
           required: true,
         },
+        subscriptionStatus: {
+          type: String,
+          enum: ["Active", "InActive"],
+          default: "Active"
+        }
       },
     ],
     deliveryAddress: {
