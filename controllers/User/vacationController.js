@@ -19,6 +19,15 @@ exports.createVacation = async (req, res) => {
   }
 };
 
+// 2. Get All Vacations
+exports.getAllVacations = async (req, res) => {
+  try {
+    const vacations = await Vacation.find();
+    res.json(vacations);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 
 // 3. Get Single Vacation
 exports.getVacation = async (req, res) => {

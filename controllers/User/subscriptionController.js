@@ -4,7 +4,6 @@ const User = require("../../models/User/userModel");
 const Address = require("../../models/User/addressModel");
 
 // Create a new subscription
-// BACKEND - Fixed createSubscription function
 const createSubscription = async (req, res) => {
   try {
     const { userId, Subscriptions, totalAmount } = req.body;
@@ -40,19 +39,19 @@ const createSubscription = async (req, res) => {
             error: "Delivery date is required for daily frequency",
           });
         }
-        
+
         // Set default dates for "Every Day" frequency to satisfy schema requirements
         const today = new Date();
         // If not provided, set default startDate to today
         if (!sub.startDate) {
-          sub.startDate = today.toISOString().split('T')[0];
+          sub.startDate = today.toISOString().split("T")[0];
         }
-        
+
         // If not provided, set default endDate to one year from today
         if (!sub.endDate) {
           const oneYearLater = new Date(today);
           oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
-          sub.endDate = oneYearLater.toISOString().split('T')[0];
+          sub.endDate = oneYearLater.toISOString().split("T")[0];
         }
       } else if (sub.frequency === "On Interval") {
         if (!sub.repeatInterval) {
@@ -70,7 +69,7 @@ const createSubscription = async (req, res) => {
           const startDate = new Date(sub.startDate);
           const oneYearLater = new Date(startDate);
           oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
-          sub.endDate = oneYearLater.toISOString().split('T')[0];
+          sub.endDate = oneYearLater.toISOString().split("T")[0];
         }
       } else if (sub.frequency === "Custom") {
         const hasDayWithQuantity = Object.values(sub.days || {}).some(
@@ -92,7 +91,7 @@ const createSubscription = async (req, res) => {
           const startDate = new Date(sub.startDate);
           const oneYearLater = new Date(startDate);
           oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
-          sub.endDate = oneYearLater.toISOString().split('T')[0];
+          sub.endDate = oneYearLater.toISOString().split("T")[0];
         }
       }
     }
@@ -109,7 +108,6 @@ const createSubscription = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
-
 
 // Get all subscriptions (admin only)
 const getAllSubscriptions = async (req, res) => {
@@ -227,13 +225,9 @@ const updateSubscription = async (req, res) => {
 const updateSubscriptionItemStatus = async (req, res) => {
   try {
     const { subscriptionId, itemId } = req.params;
-    const { status } = req.body;
+    const { subscriptionStatus } = req.body;
 
-    if (
-      !["onhold", "delivered", "upcoming", "vacation", "cancelled"].includes(
-        status
-      )
-    ) {
+    if (!["Active", "InActive"].includes(subscriptionStatus)) {
       return res.status(400).json({ error: "Invalid status" });
     }
 
@@ -247,7 +241,7 @@ const updateSubscriptionItemStatus = async (req, res) => {
       return res.status(404).json({ error: "Subscription item not found" });
     }
 
-    item.status = status;
+    item.status = subscriptionStatus;
     await subscription.save();
 
     res.status(200).json(subscription);
