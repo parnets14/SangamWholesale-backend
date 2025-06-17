@@ -3,10 +3,9 @@ const dotenv = require("dotenv");
 const connectDB = require("./config/db");
 const http = require("http");
 const socketIO = require("socket.io");
-const cors = require('cors');
+const cors = require("cors");
 const path = require("path");
-const morgan = require('morgan');
-
+const morgan = require("morgan");
 
 // Load env vars
 dotenv.config();
@@ -26,42 +25,23 @@ const io = socketIO(server, {
 
 // Body parser
 app.use(express.json());
-app.use(morgan('dev'));
+app.use(morgan("dev"));
 // Basic route
 app.get("/", (req, res) => {
   res.send(`Welcome to Hebbevu Fresh:( LocalHost ${process.env.PORT || 5000})`);
 });
 
 // Allow requests from your frontend origin
-app.use(cors({
-  origin: 'http://localhost:5173',
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  })
+);
 // Admin Routes
 app.use("/api/admin", require("./routes/Admin/adminRoutes"));
-app.use("/api/welcome", require("./routes/Admin/welcomeRoutes"));
-app.use("/api/admin", require("./routes/Admin/bannerRoutes"));
-app.use("/api/categories", require("./routes/Admin/categoryRoutes"));
-app.use("/api/products", require("./routes/Admin/productRoutes"));
-app.use("/api/cities", require("./routes/Admin/cityRoutes"));
-app.use("/api/faqs", require("./routes/Admin/faqRoutes"));
-app.use("/api/discover", require("./routes/Admin/discoverRoutes"));
-app.use("/api/admin",require("./routes/Admin/hebbevuDetails"))
 
 // User Routes
-app.use("/api/user", require("./routes/User/userRoute"));
-app.use("/api/addresses", require("./routes/User/addressRoutes"));
-app.use("/api/subscription", require("./routes/User/subscriptionRoutes"));
-app.use("/api/buyonce", require("./routes/User/buyonceRoute"));
-app.use("/api/cart", require("./routes/User/cartRoutes"));
-app.use("/api/wallet", require("./routes/User/walletRoutes"));
-app.use("/api/orders", require("./routes/User/orderRoutes"));
-app.use("/api/deliverypref", require("./routes/User/deliveryprefRoutes"));
-app.use("/api/vacations", require("./routes/User/vactionRoutes"));
-app.use("/api/referrals", require("./routes/User/referralRoutes"));
-
-// Delivery Routes
-app.use("/api/delivery", require("./routes/Driver/driverRoute"));
 
 app.use(express.static(path.join(__dirname, "uploads")));
 // app.use(express.static("uploads"));
