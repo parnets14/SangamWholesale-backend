@@ -8,7 +8,7 @@ router.post("/register", adminController.adminRegister);
 router.post("/login", adminController.adminLogin);
 
 // Protected routes
-router.get("/:id", adminProtect, adminController.getAdminById);
+router.get("/:id", adminController.getAdminById);
 router.put("/:id", adminProtect, adminController.updateAdmin);
 router.delete("/:id", adminProtect, adminController.deleteAdmin);
 

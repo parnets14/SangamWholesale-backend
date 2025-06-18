@@ -28,7 +28,7 @@ app.use(express.json());
 app.use(morgan("dev"));
 // Basic route
 app.get("/", (req, res) => {
-  res.send(`Welcome to Hebbevu Fresh:( LocalHost ${process.env.PORT || 5000})`);
+  res.send(`Welcome to Hebbevu Fresh:( LocalHost ${process.env.PORT || 8080})`);
 });
 
 // Allow requests from your frontend origin
@@ -38,13 +38,20 @@ app.use(
     credentials: true,
   })
 );
+
 // Admin Routes
 app.use("/api/admin", require("./routes/Admin/adminRoutes"));
+app.use("/api/admin/categories", require("./routes/Admin/categoryRoutes"));
+app.use(
+  "/api/admin/subcategories",
+  require("./routes/Admin/subcategoryRoutes")
+);
 
 // User Routes
+app.use("/api/user", require("./routes/User/userRoutes"));
 
+// Serve static files from uploads directory
 app.use(express.static(path.join(__dirname, "uploads")));
-// app.use(express.static("uploads"));
 
 // WebSocket connection handling
 io.on("connection", (socket) => {
@@ -57,7 +64,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("orderStatusUpdate", (data) => {
-    io.to(`user_${data.userId}`).emit("orderUpdate", {
+    io.to(`user_${userId}`).emit("orderUpdate", {
       orderId: data.orderId,
       status: data.status,
       message: data.message,
@@ -65,7 +72,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("deliveryStatusUpdate", (data) => {
-    io.to(`user_${data.userId}`).emit("deliveryUpdate", {
+    io.to(`user_${userId}`).emit("deliveryUpdate", {
       orderId: data.orderId,
       status: data.status,
       location: data.location,
@@ -73,7 +80,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("subscriptionUpdate", (data) => {
-    io.to(`user_${data.userId}`).emit("subscriptionStatus", {
+    io.to(`user_${userId}`).emit("subscriptionStatus", {
       subscriptionId: data.subscriptionId,
       status: data.status,
       message: data.message,
