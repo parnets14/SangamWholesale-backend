@@ -31,6 +31,8 @@ exports.sendOTP = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "OTP sent successfully",
+      phoneNumber: phoneNumber,
+      otp: otp,
       isNewUser: !user.isVerified,
     });
   } catch (error) {
@@ -260,7 +262,7 @@ exports.updateBusinessProfile = async (req, res) => {
     console.log("Request Files:", req.files);
     const { businessName, businessType, category } = req.body;
     console.log("Request Body:", req.body);
-    
+
     const userId = req.user._id;
     console.log("User ID:", userId);
 
@@ -291,10 +293,16 @@ exports.updateBusinessProfile = async (req, res) => {
     // Handle file uploads
     try {
       if (req.files && req.files.frontImage && req.files.frontImage[0]) {
-        businessData.frontImage = req.files.frontImage[0].path.replace(/\\/g, '/');
+        businessData.frontImage = req.files.frontImage[0].path.replace(
+          /\\/g,
+          "/"
+        );
       }
       if (req.files && req.files.backImage && req.files.backImage[0]) {
-        businessData.backImage = req.files.backImage[0].path.replace(/\\/g, '/');
+        businessData.backImage = req.files.backImage[0].path.replace(
+          /\\/g,
+          "/"
+        );
       }
     } catch (fileError) {
       console.error("File processing error:", fileError);
