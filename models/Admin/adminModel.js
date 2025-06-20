@@ -11,7 +11,7 @@ const adminSchema = mongoose.Schema(
       required: true,
       unique: true,
     },
-  adminPassword: {
+    adminPassword: {
       type: String,
       required: true,
     },
@@ -25,5 +25,5 @@ const adminSchema = mongoose.Schema(
   }
 );
 
-const adminModel = mongoose.model("admin", adminSchema);
+const adminModel = mongoose.model("Admin", adminSchema);
 module.exports = adminModel;

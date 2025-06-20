@@ -16,11 +16,6 @@ const categorySchema = mongoose.Schema(
       type: String,
       required: [true, "Category image is required"],
     },
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "admin",
-      required: true,
-    },
   },
   {
     timestamps: true,

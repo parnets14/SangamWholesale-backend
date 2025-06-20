@@ -41,11 +41,10 @@ app.use(
 
 // Admin Routes
 app.use("/api/admin", require("./routes/Admin/adminRoutes"));
-app.use("/api/admin/categories", require("./routes/Admin/categoryRoutes"));
-app.use(
-  "/api/admin/subcategories",
-  require("./routes/Admin/subcategoryRoutes")
-);
+app.use("/api/categories", require("./routes/Admin/categoryRoutes"));
+app.use("/api/subcategories", require("./routes/Admin/subcategoryRoutes"));
+app.use("/api/products", require("./routes/Admin/productRoutes"));
+app.use("/api/banners", require("./routes/Admin/bannerRoutes"));
 
 // User Routes
 app.use("/api/user", require("./routes/User/userRoutes"));

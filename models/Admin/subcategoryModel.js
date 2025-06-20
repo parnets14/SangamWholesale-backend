@@ -21,11 +21,6 @@ const subcategorySchema = mongoose.Schema(
       ref: "Category",
       required: [true, "Category reference is required"],
     },
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "admin",
-      required: true,
-    },
   },
   {
     timestamps: true,
@@ -33,4 +28,4 @@ const subcategorySchema = mongoose.Schema(
 );
 
 const Subcategory = mongoose.model("Subcategory", subcategorySchema);
-module.exports = Subcategory; 
+module.exports = Subcategory;

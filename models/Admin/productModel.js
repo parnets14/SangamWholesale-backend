@@ -25,11 +25,6 @@ const productSchema = mongoose.Schema(
       ref: "Subcategory",
       required: true,
     },
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "admin",
-      required: true,
-    },
   },
   {
     timestamps: true,
