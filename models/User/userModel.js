@@ -9,7 +9,7 @@ const userSchema = new mongoose.Schema(
     },
     otp: {
       type: String,
-      expires: 300, // OTP expires in 5 minutes
+      expires: 300,
     },
     otpExpiry: {
       type: Date,

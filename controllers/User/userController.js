@@ -94,94 +94,6 @@ exports.verifyOTP = async (req, res) => {
   }
 };
 
-// Login
-exports.login = async (req, res) => {
-  try {
-    const { phoneNumber } = req.body;
-
-    // Check if user exists
-    const user = await User.findOne({ phoneNumber });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found. Please register first.",
-      });
-    }
-
-    // Generate OTP
-    const otp = generateOTP();
-    user.otp = otp;
-    user.otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiry
-    await user.save();
-
-    // TODO: Integrate with SMS service to send OTP
-    console.log(`Login OTP for ${phoneNumber}: ${otp}`);
-
-    res.status(200).json({
-      success: true,
-      message: "OTP sent successfully for login",
-      isVerified: user.isVerified,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error in login process",
-      error: error.message,
-    });
-  }
-};
-
-// Verify Login OTP
-exports.verifyLoginOTP = async (req, res) => {
-  try {
-    const { phoneNumber, otp } = req.body;
-
-    const user = await User.findOne({
-      phoneNumber,
-      otp,
-      otpExpiry: { $gt: Date.now() },
-    });
-
-    if (!user) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid or expired OTP",
-      });
-    }
-
-    // Clear OTP data
-    user.otp = undefined;
-    user.otpExpiry = undefined;
-
-    // Generate new JWT token
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET || "your_jwt_secret",
-      { expiresIn: "30d" }
-    );
-    user.token = token;
-    await user.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Login successful",
-      token,
-      user: {
-        phoneNumber: user.phoneNumber,
-        profile: user.profile,
-        business: user.business,
-        isVerified: user.isVerified,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error in login verification",
-      error: error.message,
-    });
-  }
-};
 
 // Get User Profile
 exports.getUserProfile = async (req, res) => {
@@ -243,6 +155,32 @@ exports.updateProfile = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error updating profile",
+      error: error.message,
+    });
+  }
+};
+
+// Get Business Profile
+exports.getBusinessProfile = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      business: user.business,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching business profile",
       error: error.message,
     });
   }
