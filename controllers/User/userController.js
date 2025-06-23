@@ -94,13 +94,13 @@ exports.verifyOTP = async (req, res) => {
   }
 };
 
-
-// Get User Profile
-exports.getUserProfile = async (req, res) => {
+// Create Profile
+exports.createProfile = async (req, res) => {
   try {
     const userId = req.user._id;
-    const user = await User.findById(userId);
+    const { fullName, email } = req.body;
 
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -108,18 +108,22 @@ exports.getUserProfile = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    user.profile = {
+      isCompleted: true,
+      fullName,
+      email,
+    };
+    await user.save();
+
+    res.status(201).json({
       success: true,
-      user: {
-        phoneNumber: user.phoneNumber,
-        profile: user.profile,
-        business: user.business,
-      },
+      message: "Profile created successfully",
+      profile: user.profile,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error fetching user profile",
+      message: "Error creating profile",
       error: error.message,
     });
   }
@@ -160,8 +164,9 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
-// Get Business Profile
-exports.getBusinessProfile = async (req, res) => {
+
+// Get User Profile
+exports.getUserProfile = async (req, res) => {
   try {
     const userId = req.user._id;
     const user = await User.findById(userId);
@@ -175,16 +180,91 @@ exports.getBusinessProfile = async (req, res) => {
 
     res.status(200).json({
       success: true,
+      user: {
+        phoneNumber: user.phoneNumber,
+        profile: user.profile,
+        business: user.business,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching user profile",
+      error: error.message,
+    });
+  }
+};
+
+
+// Create Business Profile
+exports.createBusinessProfile = async (req, res) => {
+  try {
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({
+        success: false,
+        message: "User not authenticated",
+      });
+    }
+
+    const userId = req.user._id;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Parse all business fields from req.body
+    const {
+      businessName,
+      businessType,
+      category,
+     
+    } = req.body;
+
+    // Build businessData object
+    const businessData = {
+      isCompleted: true,
+      businessName,
+      businessType,
+      category,
+    };
+
+    // Handle file uploads
+    try {
+      if (req.files && req.files.frontImage && req.files.frontImage[0]) {
+        businessData.frontImage = req.files.frontImage[0].path.replace(/\\/g, "/");
+      }
+      if (req.files && req.files.backImage && req.files.backImage[0]) {
+        businessData.backImage = req.files.backImage[0].path.replace(/\\/g, "/");
+      }
+      
+    } catch (fileError) {
+      return res.status(400).json({
+        success: false,
+        message: "Error processing uploaded files",
+        error: fileError.message,
+      });
+    }
+
+    user.business = businessData;
+    await user.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Business profile created successfully",
       business: user.business,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error fetching business profile",
+      message: "Error creating business profile",
       error: error.message,
     });
   }
 };
+
 
 // Update Business Profile
 exports.updateBusinessProfile = async (req, res) => {
@@ -198,14 +278,19 @@ exports.updateBusinessProfile = async (req, res) => {
     }
 
     console.log("Request Files:", req.files);
-    const { businessName, businessType, category } = req.body;
+    const { businessName, businessType, category , establishmentYear,
+      description,
+      panAndGst,
+      vacation,
+      weeklyOff,
+      bankManagement } = req.body;
     console.log("Request Body:", req.body);
 
     const userId = req.user._id;
     console.log("User ID:", userId);
 
     // Validate required fields
-    if (!businessName || !businessType || !category) {
+    if (!businessName || !businessType || !category || !description || !panAndGst || !vacation  || !weeklyOff || !bankManagement) {
       return res.status(400).json({
         success: false,
         message: "Business name, type, and category are required",
@@ -242,6 +327,16 @@ exports.updateBusinessProfile = async (req, res) => {
           "/"
         );
       }
+      // PAN, GST images (if sent as files)
+      if (req.files && req.files.PANimage && req.files.PANimage[0]) {
+        if (!businessData.panAndGst) businessData.panAndGst = {};
+        businessData.panAndGst.panImage = req.files.PANimage[0].path.replace(/\\/g, "/");
+      }
+      if (req.files && req.files.GSTimage && req.files.GSTimage[0]) {
+        if (!businessData.panAndGst) businessData.panAndGst = {};
+        businessData.panAndGst.gstImage = req.files.GSTimage[0].path.replace(/\\/g, "/");
+      }
+      
     } catch (fileError) {
       console.error("File processing error:", fileError);
       return res.status(400).json({
@@ -272,6 +367,34 @@ exports.updateBusinessProfile = async (req, res) => {
     });
   }
 };
+
+// Get Business Profile
+exports.getBusinessProfile = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      business: user.business,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching business profile",
+      error: error.message,
+    });
+  }
+};
+
+
 
 // Delete Account
 exports.deleteAccount = async (req, res) => {

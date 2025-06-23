@@ -7,6 +7,8 @@ const cors = require("cors");
 const path = require("path");
 const morgan = require("morgan");
 
+
+
 // Load env vars
 dotenv.config();
 
@@ -48,7 +50,8 @@ app.use("/api/banners", require("./routes/Admin/bannerRoutes"));
 
 // User Routes
 app.use("/api/user", require("./routes/User/userRoutes"));
-
+app.use("/api/orders", require("./routes/User/orderRoutes"));
+app.use("/api/return-orders", require("./routes/User/returnOrderRoutes"));
 // Serve static files from uploads directory
 app.use(express.static(path.join(__dirname, "uploads")));
 
@@ -99,6 +102,8 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: err.message || "Something went wrong!" });
 });
+
+
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {

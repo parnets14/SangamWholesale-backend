@@ -12,14 +12,22 @@ router.post("/send-otp", userController.sendOTP);
 router.post("/verify-otp", userController.verifyOTP);
 
 // Login routes
-// router.post("/login", userController.login);
-// router.post("/verify-login", userController.verifyLoginOTP);
 
 // Profile routes (protected)
+router.post("/profile", userProtect, userController.createProfile);
 router.get("/profile", userProtect, userController.getUserProfile);
 router.put("/profile", userProtect, userController.updateProfile);
 
 // Business profile routes (protected)
+router.post(
+  "/business-profile",
+  userProtect,
+  uploadBusinessImages.fields([
+    { name: "frontImage", maxCount: 1 },
+    { name: "backImage", maxCount: 1 },
+  ]),
+  userController.createBusinessProfile
+);
 router.get("/business-profile", userProtect, userController.getBusinessProfile);
 router.put(
   "/business-profile",

@@ -29,6 +29,36 @@ const userSchema = new mongoose.Schema(
       email: {
         type: String,
       },
+      shopKYC: {
+        udaymAadhar: { type: String },
+        gstCertificate: { type: String },
+        fssaiLicense: { type: String },
+        drugLicense: { type: String },
+        currentAccountCheque: { type: String },
+        shopLicense: { type: String },
+        tradeCertificate: { type: String },
+        otherShopDocument: { type: String },
+      },
+      addressDetails: {
+        shopName: { type: String },
+        shopNumber: { type: String },
+        areaName: { type: String },
+        pincode: { type: String },
+        city: { type: String },
+        town: { type: String },
+        deliveryContact: { type: String },
+        saveAddress: { type: Boolean, default: false },
+        default: { type: Boolean, default: true},
+        shopOpenTime: { type: String },
+        openClosedDays: {
+          type: Map,
+          of: String, // e.g., { sunday: "open", monday: "close", ... }
+        },
+        lunchTime: {
+          lunchStart: { type: String },
+          lunchEnd: { type: String },
+        },
+      },
     },
     business: {
       isCompleted: {
@@ -49,6 +79,34 @@ const userSchema = new mongoose.Schema(
       },
       backImage: {
         type: String,
+      },
+      establishmentYear: {
+        type: Number,
+      },
+      description: {
+        type: String,
+      },
+      panAndGst: {
+        panImage: { type: String },
+        gstImage: { type: String },
+        fssaiId: { type: String },
+        taxCertificate: { type: String },
+      },
+      vacation: {
+        startDate: { type: Date },
+        endDate: { type: Date },
+        vacationEnabled: { type: Boolean, default: false },
+      },
+      weeklyOff: {
+        type: String, // "everyday" or "sat-sunday"
+      },
+      bankManagement: {
+        accountNumber: { type: String },
+        confirmAccountNumber: { type: String },
+        accountName: { type: String },
+        ifscCode: { type: String },
+        bankDetails: { type: String },
+        accountType: { type: String },
       },
     },
     token: {
