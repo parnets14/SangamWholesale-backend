@@ -7,8 +7,6 @@ const cors = require("cors");
 const path = require("path");
 const morgan = require("morgan");
 
-
-
 // Load env vars
 dotenv.config();
 
@@ -103,9 +101,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: err.message || "Something went wrong!" });
 });
 
-
-
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

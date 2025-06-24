@@ -1,15 +1,15 @@
 const express = require("express");
 const router = express.Router();
 const adminController = require("../../controllers/Admin/adminController");
-const { adminProtect } = require("../../middleware/authMiddleware");
+const {adminProtect} = require("../../middleware/authMiddleware");
 
-// Public routes
-router.post("/register", adminController.adminRegister);
+// Create initial admin (call this once when server starts)
+router.get("/get", adminController.createInitialAdmin);
+
+// Admin login
 router.post("/login", adminController.adminLogin);
 
-// Protected routes
-router.get("/:id", adminController.getAdminById);
-router.put("/:id", adminProtect, adminController.updateAdmin);
-router.delete("/:id", adminProtect, adminController.deleteAdmin);
+// Get admin profile (protected route)
+router.get("/profile", adminProtect, adminController.getAdminProfile);
 
 module.exports = router;

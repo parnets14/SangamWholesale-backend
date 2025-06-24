@@ -1,0 +1,10 @@
+shopKYC: {
+    udaymAadhar: { type: String },
+    gstCertificate: { type: String },
+    fssaiLicense: { type: String },
+    drugLicense: { type: String },
+    currentAccountCheque: { type: String },
+    shopLicense: { type: String },
+    tradeCertificate: { type: String },
+    otherShopDocument: { type: String },
+  },

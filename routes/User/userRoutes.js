@@ -1,45 +1,34 @@
 const express = require("express");
 const router = express.Router();
-const userController = require("../../controllers/User/userController");
+const {
+  sendOTP,
+  verifyOTP,
+  createUser,
+  getUser,
+  updateuser,
+  deleteUser,
+} = require("../../controllers/User/userController");
 const { userProtect } = require("../../middleware/authMiddleware");
 const createUploader = require("../../middleware/multer");
 
 // Create uploader for business images
-const uploadBusinessImages = createUploader("business");
+const uploadUserImages = createUploader("profileImage");
 
 // Auth routes
-router.post("/send-otp", userController.sendOTP);
-router.post("/verify-otp", userController.verifyOTP);
-
-// Login routes
+router.post("/send-otp", sendOTP);
+router.post("/verify-otp", verifyOTP);
 
 // Profile routes (protected)
-router.post("/profile", userProtect, userController.createProfile);
-router.get("/profile", userProtect, userController.getUserProfile);
-router.put("/profile", userProtect, userController.updateProfile);
-
-// Business profile routes (protected)
-router.post(
-  "/business-profile",
-  userProtect,
-  uploadBusinessImages.fields([
-    { name: "frontImage", maxCount: 1 },
-    { name: "backImage", maxCount: 1 },
-  ]),
-  userController.createBusinessProfile
-);
-router.get("/business-profile", userProtect, userController.getBusinessProfile);
+router.post("/profile", userProtect, createUser);
+router.get("/profile", userProtect, getUser);
 router.put(
-  "/business-profile",
+  "/profile",
   userProtect,
-  uploadBusinessImages.fields([
-    { name: "frontImage", maxCount: 1 },
-    { name: "backImage", maxCount: 1 },
-  ]),
-  userController.updateBusinessProfile
+  uploadUserImages.single("profileImage"),
+  updateuser
 );
 
 // Delete account (protected)
-router.delete("/delete-account", userProtect, userController.deleteAccount);
+router.delete("/delete", userProtect, deleteUser);
 
 module.exports = router;

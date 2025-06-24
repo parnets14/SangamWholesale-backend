@@ -1,426 +1,189 @@
-const User = require("../../models/User/userModel");
 const jwt = require("jsonwebtoken");
+const User = require("../../models/User/userModel");
 
-// Generate OTP
-const generateOTP = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
+// Generate 6-digit OTP
+const generateOTP = () =>
+  Math.floor(100000 + Math.random() * 900000).toString();
 
-// Send OTP
-exports.sendOTP = async (req, res) => {
+// Generate JWT token
+const generateToken = (userId) =>
+  jwt.sign({ id: userId }, process.env.JWT_SECRET || "your_jwt_secret", {
+    expiresIn: "30d",
+  });
+
+/**
+ * @route POST /api/users/send-otp
+ * @desc Send OTP to phone number
+ */
+const sendOTP = async (req, res) => {
   try {
-    const { phoneNumber } = req.body;
-
-    // Check if user exists
-    let user = await User.findOne({ phoneNumber });
-
-    if (!user) {
-      // Create new user if doesn't exist
-      user = new User({ phoneNumber });
+    const { phone } = req.body;
+    console.log("sendOTP called with phone:", phone);
+    if (!phone) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Phone is required" });
     }
 
-    // Generate OTP
+    let user = await User.findOne({ phone });
+
+    // New user case
+    if (!user) {
+      user = new User({ phone });
+      user.userDetails.isCompleted = false;
+    } else {
+      user.userDetails.isCompleted = true;
+    }
     const otp = generateOTP();
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
+
     user.otp = otp;
-    user.otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiry
+    user.otpExpiry = otpExpiry;
+
     await user.save();
 
-    // TODO: Integrate with SMS service to send OTP
-    console.log(`OTP for ${phoneNumber}: ${otp}`);
+    console.log(`OTP for ${phone}: ${otp}`); // Replace with SMS gateway
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "OTP sent successfully",
-      phoneNumber: phoneNumber,
-      otp: otp,
-      isNewUser: !user.isVerified,
+      isVerified: user.userDetails?.isCompleted || false,
+      otp,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error sending OTP",
-      error: error.message,
-    });
+    console.error("sendOTP error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Verify OTP and Register
-exports.verifyOTP = async (req, res) => {
+/**
+ * @route POST /api/users/verify-otp
+ * @desc Verify OTP and return JWT token
+ */
+const verifyOTP = async (req, res) => {
   try {
-    const { phoneNumber, otp } = req.body;
+    const { phone, otp } = req.body;
 
-    const user = await User.findOne({
-      phoneNumber,
-      otp,
-      otpExpiry: { $gt: Date.now() },
-    });
-
-    if (!user) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid or expired OTP",
-      });
+    if (!phone || !otp) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Phone and OTP are required" });
     }
 
-    user.isVerified = true;
+    const user = await User.findOne({ phone });
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    if (user.otp !== otp || user.otpExpiry < new Date()) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid or expired OTP" });
+    }
+
+    // Mark OTP as used
     user.otp = undefined;
     user.otpExpiry = undefined;
 
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET || "your_jwt_secret",
-      { expiresIn: "30d" }
-    );
-    user.token = token;
     await user.save();
 
-    res.status(200).json({
+    const token = generateToken(user._id);
+
+    return res.status(200).json({
       success: true,
-      message: "Registration successful",
+      message: "OTP verified",
       token,
       user: {
-        phoneNumber: user.phoneNumber,
-        profile: user.profile,
-        business: user.business,
+        _id: user._id,
+        phone: user.phone,
+        fullName: user.userDetails?.fullName || null,
+        email: user.userDetails?.email || null,
+        profileImage: user.userDetails?.profileImage || null,
       },
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error in registration",
-      error: error.message,
-    });
+    console.error("verifyOTP error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Create Profile
-exports.createProfile = async (req, res) => {
+const createUser = async (req, res) => {
+  const { fullName, email } = req.body;
+  console.log("createUser called with fullName:", fullName, "email:", email);
+  if (!email) {
+    return res.status(400).json({ message: "Email is required" });
+  }
+  if (!fullName) {
+    return res.status(400).json({ message: "fullName is required" });
+  }
+
+  const user = await User.findOne({ fullName });
+
+  if (user) {
+    return res.status(400).json({ message: "fullName already exists" });
+  }
+
+  const newUser = new User({ fullName, email });
+  await newUser.save();
+
+  return res.status(201).json({ message: "User created", user: newUser });
+};
+
+// ⏩ GET USER
+const getUser = async (req, res) => {
+  const { phone } = req.params;
+  const user = await User.findOne({ phone });
+  if (!user) return res.status(404).json({ message: "User not found" });
+
+  return res.status(200).json(user);
+};
+
+// ⏩ UPDATE USER
+const updateuser = async (req, res) => {
   try {
     const userId = req.user._id;
     const { fullName, email } = req.body;
 
     const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Update text fields
+    if (fullName) user.userDetails.fullName = fullName;
+    if (email) user.userDetails.email = email;
+
+    // Handle uploaded file (if any)
+    if (req.file) {
+      const imagePath = `/uploads/Profiles/${req.file.filename}`;
+      user.userDetails.profileImage = imagePath;
     }
 
-    user.profile = {
-      isCompleted: true,
-      fullName,
-      email,
-    };
+    user.userDetails.isCompleted = true;
     await user.save();
 
-    res.status(201).json({
-      success: true,
-      message: "Profile created successfully",
-      profile: user.profile,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error creating profile",
-      error: error.message,
-    });
+    res.status(200).json({ message: "Profile updated", user });
+  } catch (err) {
+    console.error("Update profile error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-// Update Profile
-exports.updateProfile = async (req, res) => {
-  try {
-    const { fullName, email } = req.body;
-    const userId = req.user._id;
+// ⏩ DELETE USER
+const deleteUser = async (req, res) => {
+  const { phone } = req.params;
 
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
+  const user = await User.findOneAndDelete({ phone });
+  if (!user) return res.status(404).json({ message: "User not found" });
 
-    user.profile = {
-      isCompleted: true,
-      fullName,
-      email,
-    };
-    await user.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Profile updated successfully",
-      profile: user.profile,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error updating profile",
-      error: error.message,
-    });
-  }
+  return res.status(200).json({ message: "User deleted" });
 };
 
-
-// Get User Profile
-exports.getUserProfile = async (req, res) => {
-  try {
-    const userId = req.user._id;
-    const user = await User.findById(userId);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      user: {
-        phoneNumber: user.phoneNumber,
-        profile: user.profile,
-        business: user.business,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error fetching user profile",
-      error: error.message,
-    });
-  }
-};
-
-
-// Create Business Profile
-exports.createBusinessProfile = async (req, res) => {
-  try {
-    if (!req.user || !req.user._id) {
-      return res.status(401).json({
-        success: false,
-        message: "User not authenticated",
-      });
-    }
-
-    const userId = req.user._id;
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    // Parse all business fields from req.body
-    const {
-      businessName,
-      businessType,
-      category,
-     
-    } = req.body;
-
-    // Build businessData object
-    const businessData = {
-      isCompleted: true,
-      businessName,
-      businessType,
-      category,
-    };
-
-    // Handle file uploads
-    try {
-      if (req.files && req.files.frontImage && req.files.frontImage[0]) {
-        businessData.frontImage = req.files.frontImage[0].path.replace(/\\/g, "/");
-      }
-      if (req.files && req.files.backImage && req.files.backImage[0]) {
-        businessData.backImage = req.files.backImage[0].path.replace(/\\/g, "/");
-      }
-      
-    } catch (fileError) {
-      return res.status(400).json({
-        success: false,
-        message: "Error processing uploaded files",
-        error: fileError.message,
-      });
-    }
-
-    user.business = businessData;
-    await user.save();
-
-    res.status(201).json({
-      success: true,
-      message: "Business profile created successfully",
-      business: user.business,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error creating business profile",
-      error: error.message,
-    });
-  }
-};
-
-
-// Update Business Profile
-exports.updateBusinessProfile = async (req, res) => {
-  try {
-    // Check if user is authenticated
-    if (!req.user || !req.user._id) {
-      return res.status(401).json({
-        success: false,
-        message: "User not authenticated",
-      });
-    }
-
-    console.log("Request Files:", req.files);
-    const { businessName, businessType, category , establishmentYear,
-      description,
-      panAndGst,
-      vacation,
-      weeklyOff,
-      bankManagement } = req.body;
-    console.log("Request Body:", req.body);
-
-    const userId = req.user._id;
-    console.log("User ID:", userId);
-
-    // Validate required fields
-    if (!businessName || !businessType || !category || !description || !panAndGst || !vacation  || !weeklyOff || !bankManagement) {
-      return res.status(400).json({
-        success: false,
-        message: "Business name, type, and category are required",
-      });
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    // Create business object with basic info
-    const businessData = {
-      isCompleted: true,
-      businessName,
-      businessType,
-      category,
-    };
-
-    // Handle file uploads
-    try {
-      if (req.files && req.files.frontImage && req.files.frontImage[0]) {
-        businessData.frontImage = req.files.frontImage[0].path.replace(
-          /\\/g,
-          "/"
-        );
-      }
-      if (req.files && req.files.backImage && req.files.backImage[0]) {
-        businessData.backImage = req.files.backImage[0].path.replace(
-          /\\/g,
-          "/"
-        );
-      }
-      // PAN, GST images (if sent as files)
-      if (req.files && req.files.PANimage && req.files.PANimage[0]) {
-        if (!businessData.panAndGst) businessData.panAndGst = {};
-        businessData.panAndGst.panImage = req.files.PANimage[0].path.replace(/\\/g, "/");
-      }
-      if (req.files && req.files.GSTimage && req.files.GSTimage[0]) {
-        if (!businessData.panAndGst) businessData.panAndGst = {};
-        businessData.panAndGst.gstImage = req.files.GSTimage[0].path.replace(/\\/g, "/");
-      }
-      
-    } catch (fileError) {
-      console.error("File processing error:", fileError);
-      return res.status(400).json({
-        success: false,
-        message: "Error processing uploaded files",
-        error: fileError.message,
-      });
-    }
-
-    console.log("Business Data to Update:", businessData);
-
-    // Update user's business profile
-    user.business = businessData;
-    await user.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Business profile updated successfully",
-      business: user.business,
-    });
-  } catch (error) {
-    console.error("Business Profile Update Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error updating business profile",
-      error: error.message,
-      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
-    });
-  }
-};
-
-// Get Business Profile
-exports.getBusinessProfile = async (req, res) => {
-  try {
-    const userId = req.user._id;
-    const user = await User.findById(userId);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      business: user.business,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error fetching business profile",
-      error: error.message,
-    });
-  }
-};
-
-
-
-// Delete Account
-exports.deleteAccount = async (req, res) => {
-  try {
-    const userId = req.user._id;
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    // Delete user account
-    await User.findByIdAndDelete(userId);
-
-    res.status(200).json({
-      success: true,
-      message: "Account deleted successfully",
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error deleting account",
-      error: error.message,
-    });
-  }
+module.exports = {
+  sendOTP,
+  verifyOTP,
+  createUser,
+  getUser,
+  updateuser,
+  deleteUser,
 };

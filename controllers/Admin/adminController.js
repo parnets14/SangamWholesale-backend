@@ -2,155 +2,87 @@ const adminModel = require("../../models/Admin/adminModel");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || "defaultsecret", {
-    expiresIn: "30d",
-  });
-};
-
-// REGISTER
-const adminRegister = async (req, res) => {
-  const { adminName, adminEmail, adminPassword, role } = req.body;
+// Create initial admin
+const createInitialAdmin = async () => {
   try {
-    const existingAdmin = await adminModel.findOne({ adminEmail });
-    if (existingAdmin) {
-      return res
-        .status(409)
-        .json({ success: false, message: "Email already exists" });
+    const existingAdmin = await adminModel.findOne({
+      adminEmail: "udaan@gmail.com",
+    });
+    if (!existingAdmin) {
+      const hashedPassword = await bcrypt.hash("udaan@123", 10);
+      await adminModel.create({
+        adminName: "udaan",
+        adminEmail: "udaan@gmail.com",
+        adminPassword: hashedPassword,
+        role: "admin",
+      });
+      console.log("Initial admin created successfully");
     }
-
-    const hashedPassword = await bcrypt.hash(adminPassword, 10);
-    const newAdmin = new adminModel({
-      adminName,
-      adminEmail,
-      adminPassword: hashedPassword,
-      role,
-    });
-
-    await newAdmin.save();
-
-    const token = generateToken(newAdmin._id);
-
-    return res.status(201).json({
-      success: true,
-      message: "Admin registered successfully",
-      admin: {
-        id: newAdmin._id,
-        adminToken: token,
-        adminName: newAdmin.adminName,
-        adminEmail: newAdmin.adminEmail,
-        role: newAdmin.role,
-        adminPassword: newAdmin.adminPassword,
-      },
-    });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    console.error("Error creating initial admin:", error);
   }
 };
 
-// LOGIN
+// Admin login
 const adminLogin = async (req, res) => {
-  const { adminEmail, adminPassword } = req.body;
   try {
+    const { adminEmail, adminPassword } = req.body;
+
     const admin = await adminModel.findOne({ adminEmail });
-    if (!admin)
-      return res
-        .status(404)
-        .json({ success: false, message: "Email not registered" });
+    if (!admin) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
 
     const isPasswordValid = await bcrypt.compare(
       adminPassword,
       admin.adminPassword
     );
-    if (!isPasswordValid)
-      return res
-        .status(400)
-        .json({ success: false, message: "Incorrect password" });
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
 
-    const token = generateToken(admin._id);
+    const token = jwt.sign(
+      { id: admin._id, role: admin.role },
+      process.env.JWT_SECRET || "your_jwt_secret",
+      { expiresIn: "1d" }
+    );
 
-    return res.status(200).json({
-      success: true,
-      message: "Logged in successfully",
+    admin.token = token;
+    await admin.save();
 
+    res.status(200).json({
+      message: "Login successful",
+      token,
       admin: {
         id: admin._id,
-        adminToken: token,
-        adminName: admin.adminName,
-        adminEmail: admin.adminEmail,
+        name: admin.adminName,
+        email: admin.adminEmail,
         role: admin.role,
-        adminPassword: admin.adminPassword,
+        createdAt: admin.createdAt,
       },
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-// GET ADMIN BY ID
-const getAdminById = async (req, res) => {
+// Get admin profile
+const getAdminProfile = async (req, res) => {
   try {
     const admin = await adminModel
-      .findById(req.params.id)
-      .select("-adminPassword");
-    if (!admin)
-      return res
-        .status(404)
-        .json({ success: false, message: "Admin not found" });
-
-    res.status(200).json({ success: true, data: admin });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-};
-
-// UPDATE ADMIN
-const updateAdmin = async (req, res) => {
-  try {
-    let updates = req.body;
-
-    if (updates.adminPassword) {
-      updates.adminPassword = await bcrypt.hash(updates.adminPassword, 10);
+      .findById(req.admin.id)
+      .select("-adminPassword -token");
+    if (!admin) {
+      return res.status(404).json({ message: "Admin not found" });
     }
-
-    const updatedAdmin = await adminModel
-      .findByIdAndUpdate(req.params.id, updates, {
-        new: true,
-      })
-      .select("-adminPassword");
-
-    if (!updatedAdmin)
-      return res
-        .status(404)
-        .json({ success: false, message: "Admin not found" });
-
-    res.status(200).json({ success: true, data: updatedAdmin });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-};
-
-// DELETE ADMIN
-const deleteAdmin = async (req, res) => {
-  try {
-    const admin = await adminModel.findByIdAndDelete(req.params.id);
-    if (!admin)
-      return res
-        .status(404)
-        .json({ success: false, message: "Admin not found" });
-
-    res
-      .status(200)
-      .json({ success: true, message: "Admin deleted successfully" });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(200).json(admin);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
 module.exports = {
-  adminRegister,
+  createInitialAdmin,
   adminLogin,
-  getAdminById,
-  updateAdmin,
-  deleteAdmin,
+  getAdminProfile,
 };

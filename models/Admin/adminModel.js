@@ -19,6 +19,9 @@ const adminSchema = mongoose.Schema(
       type: String,
       default: "admin",
     },
+    token: {
+      type: String,
+    },
   },
   {
     timestamps: true,
