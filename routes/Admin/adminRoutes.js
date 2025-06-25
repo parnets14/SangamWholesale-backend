@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const adminController = require("../../controllers/Admin/adminController");
-const {adminProtect} = require("../../middleware/authMiddleware");
+const { adminProtect } = require("../../middleware/authMiddleware");
 
-// Create initial admin (call this once when server starts)
+// Create initial admin
 router.get("/get", adminController.createInitialAdmin);
 
 // Admin login

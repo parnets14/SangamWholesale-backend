@@ -27,8 +27,9 @@ const createInitialAdmin = async () => {
 const adminLogin = async (req, res) => {
   try {
     const { adminEmail, adminPassword } = req.body;
-
+    console.log("Login request received:", req.body); // Add this line
     const admin = await adminModel.findOne({ adminEmail });
+    console.log("Found admin:", admin); // Add this line
     if (!admin) {
       return res.status(401).json({ message: "Invalid credentials" });
     }

@@ -1,4 +1,12 @@
-addressDetails: {
+const mongoose = require("mongoose");
+
+const addressSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
     shopName: { type: String },
     shopNumber: { type: String },
     areaName: { type: String },
@@ -7,7 +15,7 @@ addressDetails: {
     town: { type: String },
     deliveryContact: { type: String },
     saveAddress: { type: Boolean, default: false },
-    default: { type: Boolean, default: true},
+    default: { type: Boolean, default: true },
     shopOpenTime: { type: String },
     openClosedDays: {
       type: Map,
@@ -18,3 +26,9 @@ addressDetails: {
       lunchEnd: { type: String },
     },
   },
+  {
+    timestamps: true,
+  }
+);
+
+module.exports = mongoose.model("Address", addressSchema);
