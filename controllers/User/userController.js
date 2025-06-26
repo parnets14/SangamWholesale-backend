@@ -1,6 +1,13 @@
 const jwt = require("jsonwebtoken");
 const User = require("../../models/User/userModel");
+const Address = require("../../models/User/addressModel");
+const Cart = require("../../models/User/myCartModle");
+const Wishlist = require("../../models/User/wishListModel");
+const KYC = require("../../models/User/kycModel");
 const Business = require("../../models/User/bussinessModel");
+const BankAccount = require("../../models/User/bankManageModel");
+const Order = require("../../models/User/orderModel");
+const ReturnOrder = require("../../models/User/returnOrderModel");
 
 // Generate 6-digit OTP
 const generateOTP = () =>
@@ -341,17 +348,26 @@ const updateuser = async (req, res) => {
 const deleteUser = async (req, res) => {
   try {
     const userId = req.user._id;
-    const user = await User.findByIdAndDelete(userId);
 
+    // Delete user
+    const user = await User.findByIdAndDelete(userId);
     if (!user) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    return res
-      .status(200)
-      .json({ success: true, message: "User deleted successfully" });
+    // Delete all related data
+    await Promise.all([
+      Address.deleteMany({ userId }),
+      Cart.deleteMany({ user: userId }),
+      Wishlist.deleteMany({ user: userId }),
+      KYC.deleteMany({ userId }),
+      Business.deleteMany({ userId }),
+      BankAccount.deleteMany({ userId }),
+      Order.deleteMany({ user: userId }),
+      ReturnOrder.deleteMany({ user: userId }),
+    ]);
+
+    return res.status(200).json({ success: true, message: "User and all related data deleted successfully" });
   } catch (error) {
     console.error("deleteUser error:", error);
     return res.status(500).json({ success: false, message: "Server error" });
