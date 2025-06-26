@@ -8,6 +8,10 @@ const kycSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
+    adminId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin",
+    },
     udyamAadhar: { type: String },
     gstCertificate: { type: String },
     fssaiLicense: { type: String },

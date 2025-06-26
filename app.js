@@ -51,10 +51,12 @@ app.use("/api/admin/business", require("./routes/Admin/businessRoutes"));
 app.use("/api/user", require("./routes/User/userRoutes"));
 app.use("/api/business", require("./routes/User/businessRoutes"));
 app.use("/api/addresses", require("./routes/User/addressRoutes"));
+app.use("/api/cart", require("./routes/User/myCartRoutes"));
+app.use("/api/wishlist", require("./routes/User/wishListRoutes"));
 app.use("/api/orders", require("./routes/User/orderRoutes"));
 app.use("/api/return-orders", require("./routes/User/returnOrderRoutes"));
 app.use("/api/bank-accounts", require("./routes/User/bankAccountRoutes"));
-// app.use("/api/kyc", require("./routes/User/kycRoutes"));
+app.use("/api/kyc", require("./routes/User/kycRoutes"));
 // Serve static files from uploads directory
 app.use(express.static(path.join(__dirname, "uploads")));
 
