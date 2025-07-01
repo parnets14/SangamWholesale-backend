@@ -15,13 +15,6 @@ connectDB();
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIO(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  },
-});
 
 // Body parser
 app.use(express.json());
@@ -32,11 +25,7 @@ app.get("/", (req, res) => {
 });
 
 // Allow requests from your frontend origin
-app.use;
-cors({
-  //   origin: "http://localhost:5173",
-  //   credentials: true,
-});
+app.use(cors())
 
 // Admin Routes
 app.use("/api/admin", require("./routes/Admin/adminRoutes"));
@@ -59,47 +48,7 @@ app.use("/api/kyc", require("./routes/User/kycRoutes"));
 // Serve static files from uploads directory
 app.use(express.static(path.join(__dirname, "uploads")));
 
-// WebSocket connection handling
-io.on("connection", (socket) => {
-  console.log("New client connected, ID:", socket.id);
 
-  socket.on("userConnected", (userId) => {
-    socket.userId = userId;
-    socket.join(`user_${userId}`);
-    console.log(`User ${userId} connected`);
-  });
-
-  socket.on("orderStatusUpdate", (data) => {
-    io.to(`user_${userId}`).emit("orderUpdate", {
-      orderId: data.orderId,
-      status: data.status,
-      message: data.message,
-    });
-  });
-
-  socket.on("deliveryStatusUpdate", (data) => {
-    io.to(`user_${userId}`).emit("deliveryUpdate", {
-      orderId: data.orderId,
-      status: data.status,
-      location: data.location,
-    });
-  });
-
-  socket.on("subscriptionUpdate", (data) => {
-    io.to(`user_${userId}`).emit("subscriptionStatus", {
-      subscriptionId: data.subscriptionId,
-      status: data.status,
-      message: data.message,
-    });
-  });
-
-  socket.on("disconnect", () => {
-    console.log("Client disconnected, ID:", socket.id);
-    if (socket.userId) {
-      console.log(`User ${socket.userId} disconnected`);
-    }
-  });
-});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
