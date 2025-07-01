@@ -80,3 +80,21 @@ exports.getReturnOrderById = async (req, res) => {
     });
   }
 };
+
+// Admin: Get all return orders
+exports.getAllReturnOrders = async (req, res) => {
+  try {
+    const returnOrders = await ReturnOrder.find({})
+      .populate("user", "fullName mobile") // Optional: shows user info
+      .populate("order", "orderId total") // Optional: shows order info
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, returnOrders });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching all return orders",
+      error: error.message,
+    });
+  }
+};

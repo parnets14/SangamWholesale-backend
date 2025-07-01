@@ -352,7 +352,9 @@ const deleteUser = async (req, res) => {
     // Delete user
     const user = await User.findByIdAndDelete(userId);
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     // Delete all related data
@@ -367,9 +369,36 @@ const deleteUser = async (req, res) => {
       ReturnOrder.deleteMany({ user: userId }),
     ]);
 
-    return res.status(200).json({ success: true, message: "User and all related data deleted successfully" });
+    return res
+      .status(200)
+      .json({
+        success: true,
+        message: "User and all related data deleted successfully",
+      });
   } catch (error) {
     console.error("deleteUser error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// ⏩ GET ALL USERS
+const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find().select("-otp -otpExpiry"); // Exclude sensitive fields
+
+    const formattedUsers = users.map((user) => ({
+      _id: user._id,
+      phone: user.phone,
+      userDetails: user.userDetails || {},
+    }));
+
+    return res.status(200).json({
+      success: true,
+      count: formattedUsers.length,
+      users: formattedUsers,
+    });
+  } catch (error) {
+    console.error("getAllUsers error:", error);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -381,4 +410,5 @@ module.exports = {
   getUser,
   updateuser,
   deleteUser,
+  getAllUsers,
 };

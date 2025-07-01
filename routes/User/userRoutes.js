@@ -7,8 +7,12 @@ const {
   getUser,
   updateuser,
   deleteUser,
+  getAllUsers,
 } = require("../../controllers/User/userController");
-const { userProtect } = require("../../middleware/authMiddleware");
+const {
+  userProtect,
+  adminProtect,
+} = require("../../middleware/authMiddleware");
 const createUploader = require("../../middleware/multer");
 
 // Create uploader for business images
@@ -28,6 +32,7 @@ router.put(
   updateuser
 );
 
+router.get("/all", getAllUsers);
 // Delete account (protected)
 router.delete("/delete", userProtect, deleteUser);
 

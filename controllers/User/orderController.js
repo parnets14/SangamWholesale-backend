@@ -87,3 +87,20 @@ exports.getOrderById = async (req, res) => {
     });
   }
 };
+
+// Get all orders (Admin)
+exports.getAllOrders = async (req, res) => {
+  try {
+    const orders = await Order.find({})
+      .populate("user", "fullName mobile") // Optional: Populate user details
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, orders });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching all orders",
+      error: error.message,
+    });
+  }
+};
