@@ -2,30 +2,40 @@ const express = require("express");
 const dotenv = require("dotenv");
 const connectDB = require("./config/db");
 const http = require("http");
-const socketIO = require("socket.io");
 const cors = require("cors");
 const path = require("path");
 const morgan = require("morgan");
 
 // Load env vars
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, '.env') });
 
-// Connect to database
-connectDB();
-
+// create express app and server early to avoid initialization-order issues
 const app = express();
 const server = http.createServer(app);
 
-// Body parser
-app.use(express.json());
-app.use(morgan("dev"));
-// Basic route
-app.get("/", (req, res) => {
-  res.send(`Welcome to Udaan :( LocalHost ${process.env.PORT || 8080})`);
-});
+// ------------------- MIDDLEWARE -------------------
 
-// Allow requests from your frontend origin
-app.use(cors())
+// CORS FIX (only apply once)
+app.use(cors({
+  origin: ["https://sangamwholesale.com", "http://localhost:3000", "http://localhost:5173"],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(morgan("dev"));
+
+// Serve uploads directory — no-cache so browsers always get fresh images
+app.use(express.static(path.join(__dirname, "uploads"), {
+  etag: false,
+  lastModified: false,
+  setHeaders: (res) => {
+    res.setHeader("Cache-Control", "no-store");
+  },
+}));
+
+// ------------------- ROUTES -------------------
 
 // Admin Routes
 app.use("/api/admin", require("./routes/Admin/adminRoutes"));
@@ -45,18 +55,39 @@ app.use("/api/orders", require("./routes/User/orderRoutes"));
 app.use("/api/return-orders", require("./routes/User/returnOrderRoutes"));
 app.use("/api/bank-accounts", require("./routes/User/bankAccountRoutes"));
 app.use("/api/kyc", require("./routes/User/kycRoutes"));
-// Serve static files from uploads directory
-app.use(express.static(path.join(__dirname, "uploads")));
+app.use("/api/Founder", require("./routes/Admin/founderRoutes"));
+app.use("/api/Team", require("./routes/Admin/teamRoutes"));
+app.use("/api/trading", require("./routes/Admin/tradingRoutes"));
 
 
+const { createInitialAdmin } = require("./controllers/Admin/adminController");
 
-// Error handling middleware
+
+app.use(express.static(path.join(__dirname, 'build')));
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
+});
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: err.message || "Something went wrong!" });
 });
+const PORT = process.env.PORT || 1083;
 
-const PORT = process.env.PORT || 8080;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+const startServer = async () => {
+  try {
+    await connectDB(); // wait for DB before anything else
+    server.listen(PORT, '0.0.0.0', async () => {
+      console.log(`Server running on port ${PORT}`);
+      try {
+        await createInitialAdmin();
+      } catch (err) {
+        console.error('Error creating initial admin on startup:', err);
+      }
+    });
+  } catch (err) {
+    console.error('Failed to connect to DB:', err);
+    process.exit(1);
+  }
+};
+
+startServer();

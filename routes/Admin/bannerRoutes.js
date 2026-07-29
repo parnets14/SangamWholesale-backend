@@ -7,19 +7,19 @@ const createUploader = require("../../middleware/multer");
 // Create uploader for banner images
 const uploadBannerImage = createUploader("banners");
 
-// Banner CRUD routes (only add and get)
+// Banner CRUD routes
 router.post(
   "/",
-  uploadBannerImage.single("image"),
   adminProtect,
+  uploadBannerImage.array("image", 10), // Allow up to 10 images
   bannerController.createBanner
 );
 router.get("/", bannerController.getAllBanners);
 router.get("/:id", bannerController.getBanner);
 router.put(
   "/:id",
-  uploadBannerImage.single("image"),
   adminProtect,
+  uploadBannerImage.array("image", 10), // Allow up to 10 images
   bannerController.updateBanner
 );
 router.delete("/:id", adminProtect, bannerController.deleteBanner);

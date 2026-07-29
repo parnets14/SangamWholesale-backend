@@ -27,6 +27,7 @@ exports.createCategory = async (req, res) => {
 // Get All Categories
 exports.getAllCategories = async (req, res) => {
   try {
+    res.setHeader("Cache-Control", "no-store");
     const categories = await Category.find().sort({ createdAt: -1 });
     res.json({ count: categories.length, categories });
   } catch (error) {

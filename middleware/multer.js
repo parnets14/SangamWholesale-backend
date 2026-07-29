@@ -25,16 +25,37 @@ const createUploader = (folder) => {
   });
 
   const fileFilter = (req, file, cb) => {
-    const filetypes = /jpeg|jpg|png|gif|svg/;
-    const mimetype = filetypes.test(file.mimetype);
-    const extname = filetypes.test(
-      path.extname(file.originalname).toLowerCase()
-    );
+    // Allow common image formats including modern formats
+  const allowedMimeTypes = [
+      'image/jpeg',
+      'image/jpg', 
+      'image/png',
+      'image/gif',
+      'image/svg+xml',
+      'image/webp',
+      'image/avif',
+      'image/bmp',
+      'image/tiff',
+      'image/x-icon'
+    ];
+    
+    const allowedExtensions = /jpeg|jpg|png|gif|svg|webp|avif|bmp|tiff|ico/;
+    
+    const extname = path.extname(file.originalname).toLowerCase().replace('.', '');
+    const mimetype = file.mimetype.toLowerCase();
+    
+    // Check if mimetype is in allowed list
+    const mimetypeValid = allowedMimeTypes.includes(mimetype);
+    // Check if extension is valid
+    const extnameValid = allowedExtensions.test(extname);
 
-    if (mimetype && extname) {
+    if (mimetypeValid && extnameValid) {
       return cb(null, true);
     }
-    cb("Error: Only image files are allowed!");
+    
+    // Provide helpful error message
+    const errorMsg = `Error: Only image files are allowed! Supported formats: JPEG, JPG, PNG, GIF, SVG, WEBP, AVIF, BMP, TIFF. Received: ${mimetype} (${extname || 'no extension'})`;
+    cb(new Error(errorMsg));
   };
 
   return multer({

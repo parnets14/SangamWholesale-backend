@@ -49,16 +49,15 @@ const adminProtect = async (req, res, next) => {
       }
 
       req.user = admin; // Attach admin to req.user
-      next();
+      return next();
     } catch (error) {
-      console.error(error);
-      res.status(401).json({ message: "Not authorized, token failed" });
+      console.error("Admin auth error:", error);
+      return res.status(401).json({ message: "Not authorized, token failed" });
     }
   }
 
-  if (!token) {
-    res.status(401).json({ message: "Not authorized, no token" });
-  }
+  // No token provided
+  return res.status(401).json({ message: "Not authorized, no token" });
 };
 
 module.exports = { adminProtect, userProtect };

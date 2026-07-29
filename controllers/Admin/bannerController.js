@@ -1,13 +1,23 @@
 const Banner = require("../../models/Admin/bannerModel");
 
-// Create Banner (image only)
+// Create Banner
 exports.createBanner = async (req, res) => {
   try {
-    if (!req.file)
-      return res.status(400).json({ message: "Image is required" });
+    const { title = "", description = "" } = req.body;
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: "At least one image is required" });
+    }
+
+    // Process all uploaded images
+    const images = req.files.map((file) => 
+      `banners/${file.filename.replace(/\\/g, "/")}`
+    );
 
     const banner = await Banner.create({
-      image: req.file.filename.replace(/\\/g, "/"),
+      title: title || "",
+      description: description || "",
+      images,
     });
 
     res.status(201).json({ message: "Created", banner });
@@ -37,12 +47,26 @@ exports.getBanner = async (req, res) => {
   }
 };
 
-// Update Banner (image only)
+// Update Banner
 exports.updateBanner = async (req, res) => {
   try {
+    const { title, description } = req.body;
     const banner = await Banner.findById(req.params.id);
+    
     if (!banner) return res.status(404).json({ message: "Not found" });
-    if (req.file) banner.image = req.file.filename.replace(/\\/g, "/");
+
+    // Update title and description if provided (can be empty string to clear)
+    if (title !== undefined) banner.title = title || "";
+    if (description !== undefined) banner.description = description || "";
+
+    // Update images if new files are uploaded
+    if (req.files && req.files.length > 0) {
+      const newImages = req.files.map((file) => 
+        `banners/${file.filename.replace(/\\/g, "/")}`
+      );
+      banner.images = newImages;
+    }
+
     const updated = await banner.save();
     res.json({ message: "Updated", banner: updated });
   } catch (error) {

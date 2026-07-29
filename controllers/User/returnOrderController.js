@@ -24,7 +24,7 @@ exports.createReturnOrder = async (req, res) => {
     const returnOrder = new ReturnOrder({
       order: orderId,
       user: req.user._id,
-      items, // [{ productId, name, sku, image, quantity, reason }]
+      items,
       comment,
       status: "requested",
     });

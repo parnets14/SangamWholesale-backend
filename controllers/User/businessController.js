@@ -243,8 +243,9 @@ const deleteBusiness = async (req, res) => {
  */
 const getAllBusinesses = async (req, res) => {
   try {
+    res.setHeader("Cache-Control", "no-store");
     const businesses = await Business.find()
-      .populate("userId", "phone userDetails.fullName userDetails.email")
+      .populate("userId", "phone userDetails")
       .populate("approvedBy", "adminName")
       .sort({ createdAt: -1 });
 
@@ -254,10 +255,12 @@ const getAllBusinesses = async (req, res) => {
       businesses,
     });
   } catch (error) {
-    console.error("getAllBusinesses error:", error);
+    console.error("getAllBusinesses error:", error.message);
+    console.error(error.stack);
     return res.status(500).json({
       success: false,
       message: "Server error",
+      error: error.message,
     });
   }
 };

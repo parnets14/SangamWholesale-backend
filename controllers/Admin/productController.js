@@ -43,8 +43,16 @@ exports.createProduct = async (req, res) => {
 // Get All Products
 exports.getAllProducts = async (req, res) => {
   try {
+    res.setHeader("Cache-Control", "no-store");
     const products = await Product.find()
-      .populate("subcategory", "name")
+      .populate({
+        path: "subcategory",
+        select: "name category",
+        populate: {
+          path: "category",
+          select: "name",
+        },
+      })
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -62,10 +70,14 @@ exports.getAllProducts = async (req, res) => {
 // Get Single Product
 exports.getProduct = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id).populate(
-      "subcategory",
-      "name"
-    );
+    const product = await Product.findById(req.params.id).populate({
+      path: "subcategory",
+      select: "name category",
+      populate: {
+        path: "category",
+        select: "name",
+      },
+    });
 
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
@@ -119,7 +131,14 @@ exports.updateProduct = async (req, res) => {
     const product = await Product.findByIdAndUpdate(req.params.id, updates, {
       new: true,
       runValidators: true,
-    }).populate("subcategory", "name");
+    }).populate({
+      path: "subcategory",
+      select: "name category",
+      populate: {
+        path: "category",
+        select: "name",
+      },
+    });
 
     if (!product) {
       return res.status(404).json({ message: "Product not found" });

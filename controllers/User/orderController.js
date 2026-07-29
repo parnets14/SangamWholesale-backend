@@ -91,11 +91,35 @@ exports.getOrderById = async (req, res) => {
 // Get all orders (Admin)
 exports.getAllOrders = async (req, res) => {
   try {
+    res.setHeader("Cache-Control", "no-store");
     const orders = await Order.find({})
-      .populate("user", "fullName mobile") // Optional: Populate user details
+      .populate("user", "phone userDetails")
+      .populate("items.productId", "image name") // get fresh image from Product
       .sort({ createdAt: -1 });
 
-    res.status(200).json({ success: true, orders });
+    // Normalise item image: prefer live product image over stored value
+    const normalised = orders.map((order) => {
+      const orderObj = order.toObject();
+      orderObj.items = orderObj.items.map((item) => {
+        // productId is populated — use its image if available
+        const liveImage = item.productId?.image;
+        const storedImage = item.image;
+
+        let resolvedImage = liveImage || storedImage || null;
+
+        // Strip any absolute production URL prefix so frontend always gets a relative path
+        if (resolvedImage) {
+          resolvedImage = resolvedImage
+            .replace(/^https?:\/\/[^/]+\//, "/") // https://domain.com/x → /x
+            .replace(/^([^/])/, "/$1");           // products/x → /products/x
+        }
+
+        return { ...item, image: resolvedImage };
+      });
+      return orderObj;
+    });
+
+    res.status(200).json({ success: true, orders: normalised });
   } catch (error) {
     res.status(500).json({
       success: false,

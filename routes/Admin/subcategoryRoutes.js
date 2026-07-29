@@ -10,8 +10,22 @@ const uploadSubcategoryImage = createUploader("subcategories");
 // Subcategory CRUD routes
 router.post(
   "/",
-  uploadSubcategoryImage.single("image"),
   adminProtect,
+  (req, res, next) => {
+    uploadSubcategoryImage.single("image")(req, res, (err) => {
+      if (err) {
+        // Handle multer errors (file filter, size limit, etc.)
+        if (err.message && err.message.includes("Only image files")) {
+          return res.status(400).json({ message: err.message });
+        }
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ message: "File size too large. Maximum size is 5MB." });
+        }
+        return res.status(400).json({ message: err.message || "File upload error" });
+      }
+      next();
+    });
+  },
   subcategoryController.createSubcategory
 );
 
@@ -21,8 +35,22 @@ router.get("/:id", subcategoryController.getSubcategory);
 
 router.put(
   "/:id",
-  uploadSubcategoryImage.single("image"),
   adminProtect,
+  (req, res, next) => {
+    uploadSubcategoryImage.single("image")(req, res, (err) => {
+      if (err) {
+        // Handle multer errors
+        if (err.message && err.message.includes("Only image files")) {
+          return res.status(400).json({ message: err.message });
+        }
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ message: "File size too large. Maximum size is 5MB." });
+        }
+        return res.status(400).json({ message: err.message || "File upload error" });
+      }
+      next();
+    });
+  },
   subcategoryController.updateSubcategory
 );
 
