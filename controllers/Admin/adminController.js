@@ -6,13 +6,13 @@ const jwt = require("jsonwebtoken");
 const createInitialAdmin = async () => {
   try {
     const existingAdmin = await adminModel.findOne({
-      adminEmail: "udaan@gmail.com",
+      adminEmail: "sangamwholesale@gmail.com",
     });
     if (!existingAdmin) {
-      const hashedPassword = await bcrypt.hash("udaan@123", 10);
+      const hashedPassword = await bcrypt.hash("sangamwholesale@123", 10);
       await adminModel.create({
-        adminName: "udaan",
-        adminEmail: "udaan@gmail.com",
+        adminName: "sangamwholesale",
+        adminEmail: "sangamwholesale@gmail.com",
         adminPassword: hashedPassword,
         role: "admin",
       });
