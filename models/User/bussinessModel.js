@@ -11,21 +11,13 @@ const businessSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    businessType: {
+    gstNumber: {
       type: String,
-      required: true,
+      default: null,
     },
     category: {
       type: String,
-      required: true,
-    },
-    frontImage: {
-      type: String,
-      required: true,
-    },
-    backImage: {
-      type: String,
-      required: true,
+      default: "food",
     },
     establishmentYear: {
       type: Number,
@@ -45,14 +37,7 @@ const businessSchema = new mongoose.Schema(
       vacationEnabled: { type: Boolean, default: false },
     },
     weeklyOff: {
-      type: String, // "everyday open"
-      sunday: ["open", "close"],
-      monday: ["open", "close"],
-      tuesday: ["open", "close"],
-      wednesday: ["open", "close"],
-      thursday: ["open", "close"],
-      friday: ["open", "close"],
-      saturday: ["open", "close"],
+      type: String,
     },
     isCompleted: {
       type: Boolean,

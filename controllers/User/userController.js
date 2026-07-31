@@ -58,14 +58,11 @@ const sendOTP = async (req, res) => {
         businessDetails = {
           _id: business._id,
           businessName: business.businessName,
-          businessType: business.businessType,
+          gstNumber: business.gstNumber,
           category: business.category,
           establishmentYear: business.establishmentYear,
           description: business.description,
-          frontImage: business.frontImage,
-          backImage: business.backImage,
           weeklyOff: business.weeklyOff,
-          businessHours: business.businessHours,
           approvalStatus: business.approvalStatus,
           isApproved: business.isApproved,
           isCompleted: business.isCompleted,
@@ -135,14 +132,11 @@ const verifyOTP = async (req, res) => {
         businessDetails = {
           _id: business._id,
           businessName: business.businessName,
-          businessType: business.businessType,
+          gstNumber: business.gstNumber,
           category: business.category,
           establishmentYear: business.establishmentYear,
           description: business.description,
-          frontImage: business.frontImage,
-          backImage: business.backImage,
           weeklyOff: business.weeklyOff,
-          businessHours: business.businessHours,
           approvalStatus: business.approvalStatus,
           isApproved: business.isApproved,
           isCompleted: business.isCompleted,
@@ -255,10 +249,6 @@ const updateuser = async (req, res) => {
       fullName,
       email,
       businessName,
-      businessType,
-      category,
-      establishmentYear,
-      description,
     } = req.body;
 
     const user = await User.findById(userId);
@@ -283,16 +273,10 @@ const updateuser = async (req, res) => {
 
     // Handle business details if provided
     let business = null;
-    if (businessName && businessType && category) {
+    if (businessName) {
       business = await Business.findOne({ userId });
       if (business) {
-        // Update existing business
         business.businessName = businessName;
-        business.businessType = businessType;
-        business.category = category;
-        if (establishmentYear) business.establishmentYear = establishmentYear;
-        if (description) business.description = description;
-        // Reset approval status on update
         business.approvalStatus = "pending";
         business.isApproved = false;
         business.approvedBy = null;
@@ -300,14 +284,10 @@ const updateuser = async (req, res) => {
         business.rejectionReason = null;
         await business.save();
       } else {
-        // Create new business
         business = new Business({
           userId,
           businessName,
-          businessType,
-          category,
-          establishmentYear,
-          description,
+          category: 'food',
           isCompleted: true,
         });
         await business.save();
@@ -329,10 +309,7 @@ const updateuser = async (req, res) => {
         ? {
             _id: business._id,
             businessName: business.businessName,
-            businessType: business.businessType,
             category: business.category,
-            establishmentYear: business.establishmentYear,
-            description: business.description,
             approvalStatus: business.approvalStatus,
             isApproved: business.isApproved,
           }
