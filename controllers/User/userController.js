@@ -38,10 +38,9 @@ const sendOTP = async (req, res) => {
     // New user case
     if (!user) {
       user = new User({ phone });
-      user.userDetails.isCompleted = false;
-    } else {
-      user.userDetails.isCompleted = true;
+      user.userDetails = { isCompleted: false };
     }
+    // For existing users — keep their actual isCompleted value from DB, don't override it
     const otp = generateOTP();
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
 
