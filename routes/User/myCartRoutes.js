@@ -7,7 +7,8 @@ const {userProtect} = require('../../middleware/authMiddleware'); // Your JWT au
 router.get('/', userProtect, cartController.getCart);
 router.post('/', userProtect, cartController.addToCart);
 router.put('/:productId', userProtect, cartController.updateCartItem);
-router.delete('/:productId', userProtect, cartController.removeFromCart);
+// /clear MUST come before /:productId or Express matches "clear" as a productId param
 router.delete('/clear', userProtect, cartController.clearCart);
+router.delete('/:productId', userProtect, cartController.removeFromCart);
 
 module.exports = router;
