@@ -10,7 +10,7 @@ const createBusiness = async (req, res) => {
     const userId = req.user._id;
     const {
       businessName,
-      businessType,
+      gstNumber,
       category,
       establishmentYear,
       description,
@@ -18,10 +18,10 @@ const createBusiness = async (req, res) => {
     } = req.body;
 
     // Validate required fields
-    if (!businessName || !businessType || !category) {
+    if (!businessName) {
       return res.status(400).json({
         success: false,
-        message: "Business name, type, and category are required",
+        message: "Business name is required",
       });
     }
 
@@ -34,10 +34,7 @@ const createBusiness = async (req, res) => {
       });
     }
 
-    // Handle uploaded files
-    let frontImage = null;
-    let backImage = null;
-
+    // Handle uploaded files (optional — kept for backwards compatibility)
     if (req.files) {
       if (req.files.frontImage) {
         frontImage = req.files.frontImage[0].filename;
@@ -47,21 +44,12 @@ const createBusiness = async (req, res) => {
       }
     }
 
-    if (!frontImage || !backImage) {
-      return res.status(400).json({
-        success: false,
-        message: "Both front and back images are required",
-      });
-    }
-
     // Create new business
     const business = new Business({
       userId,
       businessName,
-      businessType,
-      category,
-      frontImage,
-      backImage,
+      gstNumber: gstNumber || null,
+      category: category || "food",
       establishmentYear,
       description,
       weeklyOff,
@@ -81,10 +69,8 @@ const createBusiness = async (req, res) => {
       business: {
         _id: business._id,
         businessName: business.businessName,
-        businessType: business.businessType,
+        gstNumber: business.gstNumber,
         category: business.category,
-        frontImage: business.frontImage,
-        backImage: business.backImage,
         approvalStatus: business.approvalStatus,
         isCompleted: business.isCompleted,
       },
@@ -140,7 +126,7 @@ const updateBusiness = async (req, res) => {
     const userId = req.user._id;
     const {
       businessName,
-      businessType,
+      gstNumber,
       category,
       establishmentYear,
       description,
@@ -158,20 +144,16 @@ const updateBusiness = async (req, res) => {
 
     // Update fields if provided
     if (businessName) business.businessName = businessName;
-    if (businessType) business.businessType = businessType;
+    if (gstNumber !== undefined) business.gstNumber = gstNumber || null;
     if (category) business.category = category;
     if (establishmentYear) business.establishmentYear = establishmentYear;
     if (description) business.description = description;
     if (weeklyOff) business.weeklyOff = weeklyOff;
-    if (weeklyOff) business.weeklyOff = weeklyOff;
 
     // Handle uploaded files
     if (req.files) {
-      if (req.files.frontImage) {
-        business.frontImage = req.files.frontImage[0].filename;
-      }
-      if (req.files.backImage) {
-        business.backImage = req.files.backImage[0].filename;
+      if (req.files.frontImage || req.files.backImage) {
+        // Images no longer stored — silently ignore
       }
     }
 
@@ -190,10 +172,8 @@ const updateBusiness = async (req, res) => {
       business: {
         _id: business._id,
         businessName: business.businessName,
-        businessType: business.businessType,
+        gstNumber: business.gstNumber,
         category: business.category,
-        frontImage: business.frontImage,
-        backImage: business.backImage,
         approvalStatus: business.approvalStatus,
         isCompleted: business.isCompleted,
       },
