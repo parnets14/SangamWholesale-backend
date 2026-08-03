@@ -14,7 +14,8 @@ const categorySchema = mongoose.Schema(
     },
     image: {
       type: String,
-      required: [true, "Category image is required"],
+      required: false,
+      default: null,
     },
   },
   {

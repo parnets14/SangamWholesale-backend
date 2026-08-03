@@ -5,17 +5,18 @@ exports.createCategory = async (req, res) => {
   try {
     const { name, description } = req.body;
 
+    if (!name || !description) {
+      return res.status(400).json({ message: "Name and description are required" });
+    }
+
     const existing = await Category.findOne({ name });
     if (existing)
       return res.status(400).json({ message: "Category already exists" });
 
-    if (!req.file)
-      return res.status(400).json({ message: "Image is required" });
-
     const category = await Category.create({
       name,
       description,
-      image: req.file.filename.replace(/\\/g, "/"),
+      image: req.file ? req.file.filename.replace(/\\/g, "/") : null,
     });
 
     res.status(201).json({ message: "Created", category });
