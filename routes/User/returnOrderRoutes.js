@@ -22,4 +22,11 @@ router.get(
   returnOrderController.getAllReturnOrders
 );
 
+// 👉 Admin: Update return order status
+router.put(
+  "/admin/:id/status",
+  adminProtect,
+  returnOrderController.updateReturnOrderStatus
+);
+
 module.exports = router;

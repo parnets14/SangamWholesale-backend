@@ -17,4 +17,7 @@ router.get("/:id", userProtect, orderController.getOrderById);
 // admin 
 router.get("/admin/all", adminProtect, orderController.getAllOrders);
 
+// Admin: Update order status
+router.put("/admin/:id/status", adminProtect, orderController.updateOrderStatus);
+
 module.exports = router;

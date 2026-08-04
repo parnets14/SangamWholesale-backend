@@ -98,3 +98,50 @@ exports.getAllReturnOrders = async (req, res) => {
     });
   }
 };
+
+// Admin: Update return order status
+exports.updateReturnOrderStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+
+    const VALID_STATUSES = [
+      "requested",
+      "pending",
+      "approved",
+      "rejected",
+      "picked_up",
+      "refunded",
+    ];
+
+    if (!status || !VALID_STATUSES.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status. Allowed: ${VALID_STATUSES.join(", ")}`,
+      });
+    }
+
+    const returnOrder = await ReturnOrder.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    );
+
+    if (!returnOrder) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Return order not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Return order status updated",
+      returnOrder,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error updating return order status",
+      error: error.message,
+    });
+  }
+};
