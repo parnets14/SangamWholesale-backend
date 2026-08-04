@@ -85,10 +85,11 @@ exports.getReturnOrderById = async (req, res) => {
 exports.getAllReturnOrders = async (req, res) => {
   try {
     const returnOrders = await ReturnOrder.find({})
-      .populate("user", "fullName mobile") // Optional: shows user info
-      .populate("order", "orderId total") // Optional: shows order info
+      .populate("user", "phone userDetails")
+      .populate("order", "orderId total")
       .sort({ createdAt: -1 });
 
+    res.set("Cache-Control", "no-store");
     res.status(200).json({ success: true, returnOrders });
   } catch (error) {
     res.status(500).json({
@@ -106,10 +107,12 @@ exports.updateReturnOrderStatus = async (req, res) => {
 
     const VALID_STATUSES = [
       "requested",
-      "pending",
       "approved",
+      "processing",
+      "in-transit",
+      "out-for-delivery",
+      "delivered",
       "rejected",
-      "picked_up",
       "refunded",
     ];
 

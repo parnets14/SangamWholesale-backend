@@ -135,11 +135,12 @@ exports.updateOrderStatus = async (req, res) => {
     const { status } = req.body;
 
     const VALID_STATUSES = [
-      "pending",
-      "approved",
+      "confirmed",
+      "processing",
       "in-transit",
-      "rejected",
+      "out-for-delivery",
       "delivered",
+      "rejected",
     ];
 
     if (!status || !VALID_STATUSES.includes(status)) {

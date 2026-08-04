@@ -12,21 +12,13 @@ router.post("/", userProtect, returnOrderController.createReturnOrder);
 // Get all return orders for the logged-in user
 router.get("/", userProtect, returnOrderController.getUserReturnOrders);
 
-// Get a single return order by ID
+// Admin: Get all return orders  ← must be before /:id
+router.get("/admin/all", adminProtect, returnOrderController.getAllReturnOrders);
+
+// Admin: Update return order status  ← must be before /:id
+router.put("/admin/:id/status", adminProtect, returnOrderController.updateReturnOrderStatus);
+
+// Get a single return order by ID  ← keep last so it doesn't swallow admin routes
 router.get("/:id", userProtect, returnOrderController.getReturnOrderById);
-
-// 👉 Admin: Get all return orders
-router.get(
-  "/admin/all",
-  adminProtect,
-  returnOrderController.getAllReturnOrders
-);
-
-// 👉 Admin: Update return order status
-router.put(
-  "/admin/:id/status",
-  adminProtect,
-  returnOrderController.updateReturnOrderStatus
-);
 
 module.exports = router;
