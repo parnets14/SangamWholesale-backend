@@ -1,0 +1,11 @@
+# Environment variables — never commit secrets
+.env
+.env.*
+!.env.example
+
+node_modules
+dist
+*.log
+npm-debug.log*
+uploads/*
+!uploads/.gitkeep

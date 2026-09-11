@@ -53,6 +53,7 @@ app.use("/api/cart", require("./routes/User/myCartRoutes"));
 app.use("/api/wishlist", require("./routes/User/wishListRoutes"));
 app.use("/api/orders", require("./routes/User/orderRoutes"));
 app.use("/api/return-orders", require("./routes/User/returnOrderRoutes"));
+app.use("/api/payments", require("./routes/User/razorpayRoutes"));
 app.use("/api/bank-accounts", require("./routes/User/bankAccountRoutes"));
 app.use("/api/kyc", require("./routes/User/kycRoutes"));
 app.use("/api/Founder", require("./routes/Admin/founderRoutes"));
