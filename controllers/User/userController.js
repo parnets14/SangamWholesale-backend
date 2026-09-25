@@ -379,6 +379,39 @@ const getAllUsers = async (req, res) => {
   }
 };
 
+// ⏩ ADMIN: DELETE A USER BY ID (+ all related data)
+const adminDeleteUser = async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    const user = await User.findByIdAndDelete(userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    await Promise.all([
+      Address.deleteMany({ userId }),
+      Cart.deleteMany({ user: userId }),
+      Wishlist.deleteMany({ user: userId }),
+      KYC.deleteMany({ userId }),
+      Business.deleteMany({ userId }),
+      BankAccount.deleteMany({ userId }),
+      Order.deleteMany({ user: userId }),
+      ReturnOrder.deleteMany({ user: userId }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      message: "Customer and all related data deleted",
+    });
+  } catch (error) {
+    console.error("adminDeleteUser error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -386,5 +419,95 @@ module.exports = {
   getUser,
   updateuser,
   deleteUser,
+  adminDeleteUser,
   getAllUsers,
+};
+
+/**
+ * @route GET /api/user/notifications
+ * @desc  Order-based notification feed for the logged-in customer.
+ *        Each order status change becomes a notification item.
+ */
+const getUserNotifications = async (req, res) => {
+  try {
+    const orders = await Order.find({ user: req.user._id })
+      .sort({ updatedAt: -1 })
+      .limit(50)
+      .select("_id orderId status deliveryStatus total createdAt updatedAt acceptedAt outForDeliveryAt deliveredAt");
+
+    const notifications = [];
+
+    const label = {
+      placed:            { title: "Order Placed",         message: (o) => `Your order #${o.orderId} worth Rs.${Number(o.total||0).toLocaleString()} has been placed successfully.` },
+      accepted:          { title: "Order Accepted",       message: (o) => `Order #${o.orderId} has been accepted by a delivery partner and will be picked up soon.` },
+      out_for_delivery:  { title: "Out for Delivery",     message: (o) => `Order #${o.orderId} is on its way to you. Please keep your OTP ready.` },
+      delivered:         { title: "Order Delivered",      message: (o) => `Order #${o.orderId} has been delivered successfully. Thank you for shopping with us!` },
+      undelivered:       { title: "Delivery Unsuccessful",message: (o) => `We could not deliver order #${o.orderId}. Please contact support for assistance.` },
+      cancelled:         { title: "Order Cancelled",      message: (o) => `Order #${o.orderId} has been cancelled.` },
+    };
+
+    const timeFor = (o, status) => {
+      if (status === "delivered")        return o.deliveredAt || o.updatedAt;
+      if (status === "out_for_delivery") return o.outForDeliveryAt || o.updatedAt;
+      if (status === "accepted")         return o.acceptedAt || o.updatedAt;
+      return o.updatedAt || o.createdAt;
+    };
+
+    const statusOrder = ["placed", "accepted", "out_for_delivery", "delivered", "undelivered", "cancelled"];
+
+    orders.forEach((o) => {
+      const currentIdx = statusOrder.indexOf(o.deliveryStatus || o.status);
+      const statuses = currentIdx >= 0 ? statusOrder.slice(0, currentIdx + 1) : ["placed"];
+      statuses.forEach((s) => {
+        const meta = label[s];
+        if (!meta) return;
+        notifications.push({
+          id: `${o._id}_${s}`,
+          type: s,
+          title: meta.title,
+          message: meta.message(o),
+          orderId: String(o._id),
+          orderRef: o.orderId,
+          createdAt: timeFor(o, s),
+        });
+      });
+    });
+
+    notifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    return res.status(200).json({ success: true, notifications });
+  } catch (error) {
+    console.error("getUserNotifications error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+/**
+ * @route POST /api/user/fcm-token
+ * @desc  Save/refresh the logged-in customer's FCM device token.
+ */
+const saveFcmToken = async (req, res) => {
+  try {
+    const {fcmToken} = req.body;
+    if (!fcmToken) {
+      return res.status(400).json({success: false, message: "fcmToken is required"});
+    }
+    await User.findByIdAndUpdate(req.user._id, {fcmToken});
+    return res.status(200).json({success: true});
+  } catch (error) {
+    console.error("saveFcmToken error:", error);
+    return res.status(500).json({success: false, message: "Server error"});
+  }
+};
+
+module.exports = {
+  sendOTP,
+  verifyOTP,
+  createUser,
+  getUser,
+  updateuser,
+  deleteUser,
+  adminDeleteUser,
+  getAllUsers,
+  getUserNotifications,
+  saveFcmToken,
 };

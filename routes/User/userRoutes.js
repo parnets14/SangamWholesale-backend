@@ -7,7 +7,10 @@ const {
   getUser,
   updateuser,
   deleteUser,
+  adminDeleteUser,
   getAllUsers,
+  getUserNotifications,
+  saveFcmToken,
 } = require("../../controllers/User/userController");
 const {
   userProtect,
@@ -33,7 +36,13 @@ router.put(
 );
 
 router.get("/all", getAllUsers);
-// Delete account (protected)
+// Delete account (protected - user deletes their own account)
 router.delete("/delete", userProtect, deleteUser);
+// Admin deletes a customer by id
+router.delete("/admin/:id", adminProtect, adminDeleteUser);
+// Notification feed
+router.get("/notifications", userProtect, getUserNotifications);
+// FCM device token
+router.post("/fcm-token", userProtect, saveFcmToken);
 
 module.exports = router;

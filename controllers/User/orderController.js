@@ -1,4 +1,7 @@
 const Order = require("../../models/User/orderModel");
+const Driver = require("../../models/Delivery/driverModel");
+const User = require("../../models/User/userModel");
+const { sendToMany, sendToToken } = require("../../utils/push");
 
 // Create Order
 exports.createOrder = async (req, res) => {
@@ -38,9 +41,36 @@ exports.createOrder = async (req, res) => {
 
     await order.save();
 
+    // Respond first, then send push notifications.
     res
       .status(201)
       .json({ success: true, message: "Order placed successfully", order });
+
+    // 1. Notify the customer their order was placed successfully.
+    try {
+      const customer = await User.findById(req.user._id).select("fcmToken").lean();
+      if (customer?.fcmToken) {
+        await sendToToken(customer.fcmToken, {
+          title: "Order Placed Successfully",
+          body: `Your order #${orderId} worth \u20B9${total} has been placed. We'll notify you when it's accepted.`,
+          data: { type: "placed", orderId: String(order._id), orderRef: orderId || "" },
+        });
+      }
+    } catch (e) {}
+
+    // 2. Broadcast to all active delivery partners.
+    try {
+      const drivers = await Driver.find({
+        blockstatus: { $ne: true },
+        fcmToken: { $exists: true, $ne: "" },
+      }).select("fcmToken");
+      const tokens = drivers.map((d) => d.fcmToken);
+      await sendToMany(tokens, {
+        title: "New order available",
+        body: `Order ${orderId || ""} \u00B7 \u20B9${total} is ready to accept`,
+        data: { type: "available" },
+      });
+    } catch (e) {}
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -53,9 +83,9 @@ exports.createOrder = async (req, res) => {
 // Get all orders for a user
 exports.getUserOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.user._id }).sort({
-      createdAt: -1,
-    });
+    const orders = await Order.find({ user: req.user._id })
+      .populate("deliveryPartner", "name phone")
+      .sort({ createdAt: -1 });
     res.status(200).json({ success: true, orders });
   } catch (error) {
     res.status(500).json({
@@ -95,6 +125,7 @@ exports.getAllOrders = async (req, res) => {
     const orders = await Order.find({})
       .populate("user", "phone userDetails")
       .populate("items.productId", "image name") // get fresh image from Product
+      .populate("deliveryPartner", "name phone driverId") // who accepted it
       .sort({ createdAt: -1 });
 
     // Normalise item image: prefer live product image over stored value
@@ -161,6 +192,28 @@ exports.updateOrderStatus = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Order not found" });
     }
+
+    // Notify the customer about the status change (non-blocking).
+    try {
+      const statusMessages = {
+        confirmed:        { title: "Order Confirmed",        body: `Your order #${order.orderId} has been confirmed and is being processed.` },
+        processing:       { title: "Order Processing",       body: `Your order #${order.orderId} is currently being processed.` },
+        "in-transit":     { title: "Order In Transit",       body: `Your order #${order.orderId} is in transit and on its way to you.` },
+        "out-for-delivery": { title: "Out for Delivery",     body: `Your order #${order.orderId} is out for delivery. Expect it soon!` },
+        delivered:        { title: "Order Delivered",        body: `Your order #${order.orderId} has been delivered. Thank you for shopping with us!` },
+        rejected:         { title: "Order Rejected",         body: `Unfortunately, your order #${order.orderId} has been rejected. Please contact support.` },
+      };
+      const msg = statusMessages[status];
+      if (msg) {
+        const user = await User.findById(order.user).select("fcmToken").lean();
+        if (user?.fcmToken) {
+          sendToToken(user.fcmToken, {
+            ...msg,
+            data: { type: status, orderId: String(order._id) },
+          }).catch(() => {});
+        }
+      }
+    } catch (_) {}
 
     res.status(200).json({
       success: true,

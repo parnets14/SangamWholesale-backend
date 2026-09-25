@@ -16,6 +16,7 @@ const userSchema = new mongoose.Schema(
       profileImage: String,
       isCompleted: { type: Boolean, default: false },
     },
+    fcmToken: { type: String, default: "" },
   },
   {
     timestamps: true,

@@ -60,6 +60,12 @@ app.use("/api/Founder", require("./routes/Admin/founderRoutes"));
 app.use("/api/Team", require("./routes/Admin/teamRoutes"));
 app.use("/api/trading", require("./routes/Admin/tradingRoutes"));
 
+// Delivery Partner Routes
+app.use("/api/driver", require("./routes/Delivery/driverRoutes"));
+app.use("/api/delivery", require("./routes/Delivery/deliveryRoutes"));
+// Admin: manage delivery partners
+app.use("/api/admin/drivers", require("./routes/Delivery/adminDriverRoutes"));
+
 
 const { createInitialAdmin } = require("./controllers/Admin/adminController");
 

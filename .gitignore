@@ -11,3 +11,7 @@ uploads/*
 !uploads/.gitkeep
 
 app.zip
+
+# Firebase service account key — secret, never commit
+serviceAccountKey.json
+sangam-73dda-firebase-adminsdk-fbsvc-f9c849a653.json
