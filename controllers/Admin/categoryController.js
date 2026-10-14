@@ -5,8 +5,8 @@ exports.createCategory = async (req, res) => {
   try {
     const { name, description } = req.body;
 
-    if (!name || !description) {
-      return res.status(400).json({ message: "Name and description are required" });
+    if (!name) {
+      return res.status(400).json({ message: "Category name is required" });
     }
 
     const existing = await Category.findOne({ name });
@@ -15,7 +15,7 @@ exports.createCategory = async (req, res) => {
 
     const category = await Category.create({
       name,
-      description,
+      description: description || "",
       image: req.file ? req.file.filename.replace(/\\/g, "/") : null,
     });
 
@@ -61,7 +61,8 @@ exports.updateCategory = async (req, res) => {
     }
 
     category.name = name || category.name;
-    category.description = description || category.description;
+    // description is optional — allow clearing it by sending an empty string
+    if (description !== undefined) category.description = description;
     if (req.file) category.image = req.file.filename.replace(/\\/g, "/");
 
     const updated = await category.save();

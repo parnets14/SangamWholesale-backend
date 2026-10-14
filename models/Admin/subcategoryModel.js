@@ -10,11 +10,14 @@ const subcategorySchema = mongoose.Schema(
     },
     description: {
       type: String,
-      required: [true, "Subcategory description is required"],
+      required: false,
+      default: "",
+      trim: true,
     },
     image: {
       type: String,
-      required: [true, "Subcategory image is required"],
+      required: false,
+      default: null,
     },
     category: {
       type: mongoose.Schema.Types.ObjectId,

@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
 const User = require("../../models/User/userModel");
 const Address = require("../../models/User/addressModel");
 const Cart = require("../../models/User/myCartModle");
@@ -384,27 +385,47 @@ const adminDeleteUser = async (req, res) => {
   try {
     const userId = req.params.id;
 
-    const user = await User.findByIdAndDelete(userId);
-    if (!user) {
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+        .status(400)
+        .json({ success: false, message: "Invalid customer id" });
     }
 
-    await Promise.all([
-      Address.deleteMany({ userId }),
-      Cart.deleteMany({ user: userId }),
-      Wishlist.deleteMany({ user: userId }),
-      KYC.deleteMany({ userId }),
-      Business.deleteMany({ userId }),
-      BankAccount.deleteMany({ userId }),
-      Order.deleteMany({ user: userId }),
-      ReturnOrder.deleteMany({ user: userId }),
-    ]);
+    const user = await User.findByIdAndDelete(userId);
 
+    // Purge related data. Each cleanup runs independently via allSettled so that
+    // a single failing collection can never turn the whole delete into a 500 —
+    // which previously left the user row gone but returned an error, so the next
+    // click hit a confusing "User not found".
+    const cleanups = [
+      ["Address", () => Address.deleteMany({ userId })],
+      ["Cart", () => Cart.deleteMany({ user: userId })],
+      ["Wishlist", () => Wishlist.deleteMany({ user: userId })],
+      ["KYC", () => KYC.deleteMany({ userId })],
+      ["Business", () => Business.deleteMany({ userId })],
+      ["BankAccount", () => BankAccount.deleteMany({ userId })],
+      ["Order", () => Order.deleteMany({ user: userId })],
+      ["ReturnOrder", () => ReturnOrder.deleteMany({ user: userId })],
+    ];
+
+    const results = await Promise.allSettled(cleanups.map(([, run]) => run()));
+
+    results.forEach((result, i) => {
+      if (result.status === "rejected") {
+        console.error(
+          `adminDeleteUser: cleanup failed for ${cleanups[i][0]}:`,
+          result.reason?.message || result.reason
+        );
+      }
+    });
+
+    // Deleting an already-deleted customer is a success, not an error — this
+    // makes the endpoint idempotent so retries never surface "User not found".
     return res.status(200).json({
       success: true,
-      message: "Customer and all related data deleted",
+      message: user
+        ? "Customer and all related data deleted"
+        : "Customer was already deleted",
     });
   } catch (error) {
     console.error("adminDeleteUser error:", error);

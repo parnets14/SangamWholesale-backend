@@ -228,3 +228,32 @@ exports.updateOrderStatus = async (req, res) => {
     });
   }
 };
+
+// Admin: Delete an order
+exports.adminDeleteOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Guard the cast so a malformed id is a clean 400, not a 500 CastError
+    if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid order id" });
+    }
+
+    const order = await Order.findByIdAndDelete(id);
+
+    // Idempotent — deleting an order that is already gone is still a success,
+    // so retrying after a partial failure never surfaces a confusing error.
+    return res.status(200).json({
+      success: true,
+      message: order ? "Order deleted" : "Order was already deleted",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error deleting order",
+      error: error.message,
+    });
+  }
+};

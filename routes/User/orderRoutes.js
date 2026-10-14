@@ -20,4 +20,7 @@ router.get("/admin/all", adminProtect, orderController.getAllOrders);
 // Admin: Update order status
 router.put("/admin/:id/status", adminProtect, orderController.updateOrderStatus);
 
+// Admin: Delete an order
+router.delete("/admin/:id", adminProtect, orderController.adminDeleteOrder);
+
 module.exports = router;

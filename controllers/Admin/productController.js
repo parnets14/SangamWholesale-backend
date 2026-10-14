@@ -11,20 +11,21 @@ exports.createProduct = async (req, res) => {
       discountPrice,
       unit,
       quantity,
+      stock,
+      brand,
     } = req.body;
 
-    if (!req.file) {
-      return res.status(400).json({ message: "Product image is required" });
-    }
-
+    // description, brand and image are all optional
     const product = await Product.create({
       name,
-      description,
+      description: description || "",
       price: parseFloat(price),
-      image: req.file.filename.replace(/\\/g, "/"),
+      image: req.file ? req.file.filename.replace(/\\/g, "/") : null,
       discountPrice,
       unit,
       quantity,
+      stock,
+      brand: brand || "",
       subcategory,
     });
 

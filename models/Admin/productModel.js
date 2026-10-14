@@ -9,7 +9,9 @@ const productSchema = mongoose.Schema(
     },
     description: {
       type: String,
-      required: true,
+      required: false,
+      default: "",
+      trim: true,
     },
     price: {
       type: Number,
@@ -18,7 +20,8 @@ const productSchema = mongoose.Schema(
     },
     image: {
       type: String,
-      required: true,
+      required: false,
+      default: null,
     },
     discountPrice: {
       type: Number,

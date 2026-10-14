@@ -15,12 +15,9 @@ exports.createSubcategory = async (req, res) => {
     
     console.log("Extracted values:", { name, description, categoryId });
 
-    // Validate required fields
+    // Validate required fields (description and image are optional)
     if (!name) {
       return res.status(400).json({ message: "Subcategory name is required" });
-    }
-    if (!description) {
-      return res.status(400).json({ message: "Subcategory description is required" });
     }
     if (!categoryId) {
       return res.status(400).json({ message: "Category ID is required" });
@@ -43,22 +40,17 @@ exports.createSubcategory = async (req, res) => {
       return res.status(400).json({ message: "Subcategory already exists" });
     }
 
-    if (!req.file) {
-      console.log("No file uploaded");
-      return res.status(400).json({ message: "Image is required" });
-    }
-
     console.log("Creating subcategory with data:", {
       name,
-      description,
-      image: req.file.filename,
+      description: description || "",
+      image: req.file ? req.file.filename : null,
       category: categoryId
     });
 
     const subcategory = await Subcategory.create({
       name: name.trim(),
-      description: description.trim(),
-      image: req.file.filename.replace(/\\/g, "/"),
+      description: (description || "").trim(),
+      image: req.file ? req.file.filename.replace(/\\/g, "/") : null,
       category: categoryId,
     });
 
@@ -174,9 +166,11 @@ exports.updateSubcategory = async (req, res) => {
 
     const updateData = {
       name: name || subcategory.name,
-      description: description || subcategory.description,
       category: categoryId || subcategory.category,
     };
+
+    // description is optional — allow clearing it by sending an empty string
+    if (description !== undefined) updateData.description = description;
 
     if (req.file) {
       updateData.image = req.file.filename.replace(/\\/g, "/");
