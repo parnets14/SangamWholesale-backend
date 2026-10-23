@@ -7,6 +7,8 @@ const orderItemSchema = new mongoose.Schema({
   image: String,
   price: Number,
   quantity: Number,
+  unit: String, // selling unit at order time, e.g. "bag" / "kg"
+  gst: Number, // per-item GST % at order time
 });
 
 const orderSchema = new mongoose.Schema(

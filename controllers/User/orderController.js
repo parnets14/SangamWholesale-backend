@@ -1,6 +1,7 @@
 const Order = require("../../models/User/orderModel");
 const Driver = require("../../models/Delivery/driverModel");
 const User = require("../../models/User/userModel");
+const Business = require("../../models/User/bussinessModel");
 const { sendToMany, sendToToken } = require("../../utils/push");
 
 // Create Order
@@ -128,9 +129,30 @@ exports.getAllOrders = async (req, res) => {
       .populate("deliveryPartner", "name phone driverId") // who accepted it
       .sort({ createdAt: -1 });
 
+    // Attach each customer's business name + GST (from the Business collection)
+    const userIds = [
+      ...new Set(
+        orders.map((o) => o.user?._id?.toString()).filter(Boolean)
+      ),
+    ];
+    const businesses = userIds.length
+      ? await Business.find({ userId: { $in: userIds } })
+          .select("userId businessName gstNumber")
+          .lean()
+      : [];
+    const bizMap = {};
+    businesses.forEach((b) => {
+      bizMap[b.userId.toString()] = {
+        businessName: b.businessName,
+        gstNumber: b.gstNumber,
+      };
+    });
+
     // Normalise item image: prefer live product image over stored value
     const normalised = orders.map((order) => {
       const orderObj = order.toObject();
+      orderObj.customerBusiness =
+        bizMap[orderObj.user?._id?.toString()] || null;
       orderObj.items = orderObj.items.map((item) => {
         // productId is populated — use its image if available
         const liveImage = item.productId?.image;

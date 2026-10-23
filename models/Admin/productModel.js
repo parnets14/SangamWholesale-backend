@@ -18,6 +18,11 @@ const productSchema = mongoose.Schema(
       required: true,
       min: 0,
     },
+    gst: {
+      type: Number, // GST percentage per item, e.g. 5, 12, 18, 28
+      default: 0,
+      min: 0,
+    },
     image: {
       type: String,
       required: false,
@@ -38,6 +43,16 @@ const productSchema = mongoose.Schema(
     quantity: {
       type: Number, // e.g. 1, 2, 3
       default: 1, // Default to 1 for single items
+    },
+    packSize: {
+      type: Number, // unit conversion: "1 [unit] = [packSize] [baseUnit]" e.g. 1 bag = 30 kg
+      default: null,
+      min: 0,
+    },
+    baseUnit: {
+      type: String, // base unit for the conversion, e.g. "kg"
+      default: "",
+      trim: true,
     },
     brand: {
       type: String,

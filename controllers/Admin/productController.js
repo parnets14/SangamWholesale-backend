@@ -13,6 +13,9 @@ exports.createProduct = async (req, res) => {
       quantity,
       stock,
       brand,
+      gst,
+      packSize,
+      baseUnit,
     } = req.body;
 
     // description, brand and image are all optional
@@ -27,6 +30,12 @@ exports.createProduct = async (req, res) => {
       stock,
       brand: brand || "",
       subcategory,
+      gst: gst !== undefined && gst !== null && gst !== "" ? parseFloat(gst) : 0,
+      packSize:
+        packSize !== undefined && packSize !== null && packSize !== ""
+          ? parseFloat(packSize)
+          : null,
+      baseUnit: baseUnit || "",
     });
 
     res.status(201).json({
@@ -120,6 +129,21 @@ exports.updateProduct = async (req, res) => {
     }
     if (updates.brand) {
       updates.brand = updates.brand.trim();
+    }
+    if (updates.gst !== undefined) {
+      updates.gst =
+        updates.gst === "" || updates.gst === null
+          ? 0
+          : parseFloat(updates.gst);
+    }
+    if (updates.packSize !== undefined) {
+      updates.packSize =
+        updates.packSize === "" || updates.packSize === null
+          ? null
+          : parseFloat(updates.packSize);
+    }
+    if (updates.baseUnit !== undefined) {
+      updates.baseUnit = (updates.baseUnit || "").trim();
     }
     // if (description) {
     //   updates.description = updates.description.trim();

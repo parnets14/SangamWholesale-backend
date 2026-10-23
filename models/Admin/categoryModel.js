@@ -19,6 +19,11 @@ const categorySchema = mongoose.Schema(
       required: false,
       default: null,
     },
+    order: {
+      type: Number,
+      required: false,
+      default: null,
+    },
   },
   {
     timestamps: true,
